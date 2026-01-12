@@ -326,37 +326,3 @@ export default function VideoCapture({
     </div>
   );
 }
-
-/**
- * Hook to access video capture functionality
- */
-export function useVideoCapture() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const startStream = useCallback(async (constraints?: MediaStreamConstraints) => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('getUserMedia is not supported');
-    }
-    const stream = await navigator.mediaDevices.getUserMedia(
-      constraints || {
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: true,
-      }
-    );
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-    }
-    return stream;
-  }, []);
-
-  const stopStream = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  return { videoRef, startStream, stopStream };
-}

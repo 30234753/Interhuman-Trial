@@ -9,8 +9,6 @@ import { useSession } from './lib/session-context';
 
 export default function Home() {
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
-  const [currentSignals, setCurrentSignals] = useState<BehavioralSignal[]>([]);
-  const [showSummary, setShowSummary] = useState<boolean>(false);
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
     startTime: number;
@@ -36,7 +34,6 @@ export default function Home() {
     if (!previousActiveState.current && sessionActive) {
       // Clear summary data from previous session to allow real-time updates for new session
       setSummaryData(null);
-      setShowSummary(false);
       preservedSessionData.current = null;
     }
     
@@ -56,7 +53,6 @@ export default function Home() {
           startTime,
           endTime,
         });
-        setShowSummary(true);
         // Clear preserved data after using it
         preservedSessionData.current = null;
       }
@@ -66,7 +62,6 @@ export default function Home() {
   }, [sessionActive, sessionState.startTime, sessionState.signals]);
 
   const handleCloseSummary = () => {
-    setShowSummary(false);
     setSummaryData(null);
   };
 
@@ -114,11 +109,9 @@ export default function Home() {
                 onStreamStop={() => {
                   console.log('Stream stopped');
                   setStreamStatus('Stream stopped');
-                  setCurrentSignals([]);
                 }}
                 onSignalsUpdate={(signals) => {
                   console.log('Signals updated:', signals);
-                  setCurrentSignals(signals);
                   // Update session with signals if session is active
                   if (sessionActive) {
                     updateSignals(signals);

@@ -1,7 +1,7 @@
 'use client';
 
 import { BehavioralSignal } from '@/app/lib/types';
-import BehavioralIndicator, { BehavioralIndicatorProps } from './BehavioralIndicator';
+import BehavioralIndicator from './BehavioralIndicator';
 
 export interface FeedbackOverlayProps {
   signals: BehavioralSignal[];

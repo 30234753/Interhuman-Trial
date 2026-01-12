@@ -19,7 +19,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     sessionId: null,
     startTime: null,
     signals: [],
-    currentSignals: [],
   });
 
   const startSession = useCallback(async () => {
@@ -51,7 +50,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         sessionId: newSessionId,
         startTime,
         signals: [],
-        currentSignals: [],
       });
       
       return newSessionId;
@@ -106,7 +104,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         sessionId: null,
         startTime: null,
         signals: [],
-        currentSignals: [],
       });
     } catch (error) {
       console.error('Error stopping session:', error);
@@ -139,7 +136,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       return {
         ...prev,
-        currentSignals: signals,
         signals: updatedSignals,
       };
     });

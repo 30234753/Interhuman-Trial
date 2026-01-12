@@ -29,6 +29,5 @@ export interface SessionState {
   sessionId: string | null;
   startTime: number | null;
   signals: BehavioralSignal[];
-  currentSignals: BehavioralSignal[];
 }
 
