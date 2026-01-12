@@ -1,10 +1,12 @@
 'use client';
 
-import VideoCapture from './components/VideoCapture';
+import VideoPlayer from './components/VideoPlayer';
 import { useState } from 'react';
+import { BehavioralSignal } from './lib/types';
 
 export default function Home() {
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
+  const [currentSignals, setCurrentSignals] = useState<BehavioralSignal[]>([]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
@@ -13,14 +15,21 @@ export default function Home() {
         
         <div className="mt-8 mb-4">
           <p className="text-lg mb-2">Status: {streamStatus}</p>
+          {currentSignals.length > 0 && (
+            <p className="text-sm text-gray-400">
+              {currentSignals.length} behavioral signal{currentSignals.length !== 1 ? 's' : ''} detected
+            </p>
+          )}
         </div>
 
         <div className="w-full max-w-2xl mx-auto">
-          <VideoCapture
+          <VideoPlayer
             autoStart={false}
+            enabled={true}
+            analysisInterval={2000}
             onStreamReady={(stream) => {
               console.log('Stream ready:', stream);
-              setStreamStatus('Streaming active');
+              setStreamStatus('Streaming active - Analysis enabled');
             }}
             onStreamError={(error) => {
               console.error('Stream error:', error);
@@ -29,6 +38,11 @@ export default function Home() {
             onStreamStop={() => {
               console.log('Stream stopped');
               setStreamStatus('Stream stopped');
+              setCurrentSignals([]);
+            }}
+            onSignalsUpdate={(signals) => {
+              console.log('Signals updated:', signals);
+              setCurrentSignals(signals);
             }}
             className="w-full aspect-video"
           />

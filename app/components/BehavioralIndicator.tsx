@@ -1,0 +1,152 @@
+'use client';
+
+import { BehavioralSignal } from '@/app/lib/types';
+
+export interface BehavioralIndicatorProps {
+  signal: BehavioralSignal;
+  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
+  size?: 'small' | 'medium' | 'large';
+  showLabel?: boolean;
+  showValue?: boolean;
+}
+
+/**
+ * Color mapping for different behavioral signal types
+ */
+const SIGNAL_COLORS: Record<BehavioralSignal['type'], string> = {
+  stress: '#ef4444', // red-500
+  engagement: '#22c55e', // green-500
+  confusion: '#f59e0b', // amber-500
+  hesitation: '#eab308', // yellow-500
+  agreement: '#3b82f6', // blue-500
+  disagreement: '#8b5cf6', // purple-500
+};
+
+/**
+ * Gets the intensity level (low, medium, high) based on intensity value
+ */
+function getIntensityLevel(intensity: number): 'low' | 'medium' | 'high' {
+  if (intensity < 33) return 'low';
+  if (intensity < 67) return 'medium';
+  return 'high';
+}
+
+/**
+ * Gets opacity based on intensity level
+ */
+function getOpacity(intensity: number): number {
+  const level = getIntensityLevel(intensity);
+  switch (level) {
+    case 'low':
+      return 0.4;
+    case 'medium':
+      return 0.7;
+    case 'high':
+      return 1.0;
+  }
+}
+
+/**
+ * Gets size multiplier based on intensity level
+ */
+function getSizeMultiplier(intensity: number): number {
+  const level = getIntensityLevel(intensity);
+  switch (level) {
+    case 'low':
+      return 0.8;
+    case 'medium':
+      return 1.0;
+    case 'high':
+      return 1.2;
+  }
+}
+
+/**
+ * Reusable component for displaying color-coded intensity indicators
+ * for behavioral signals
+ */
+export default function BehavioralIndicator({
+  signal,
+  position = 'top-right',
+  size = 'medium',
+  showLabel = true,
+  showValue = false,
+}: BehavioralIndicatorProps) {
+  const color = SIGNAL_COLORS[signal.type];
+  const intensity = signal.intensity;
+  const opacity = getOpacity(intensity);
+  const sizeMultiplier = getSizeMultiplier(intensity);
+  const intensityLevel = getIntensityLevel(intensity);
+
+  // Base sizes
+  const baseSizes = {
+    small: { width: 12, height: 12, fontSize: 'text-xs' },
+    medium: { width: 16, height: 16, fontSize: 'text-sm' },
+    large: { width: 20, height: 20, fontSize: 'text-base' },
+  };
+
+  const baseSize = baseSizes[size];
+  const actualWidth = baseSize.width * sizeMultiplier;
+  const actualHeight = baseSize.height * sizeMultiplier;
+
+  // Position classes
+  const positionClasses = {
+    'top-left': 'top-4 left-4',
+    'top-right': 'top-4 right-4',
+    'bottom-left': 'bottom-4 left-4',
+    'bottom-right': 'bottom-4 right-4',
+    'top': 'top-4 left-1/2 -translate-x-1/2',
+    'bottom': 'bottom-4 left-1/2 -translate-x-1/2',
+    'left': 'left-4 top-1/2 -translate-y-1/2',
+    'right': 'right-4 top-1/2 -translate-y-1/2',
+  };
+
+  // Format signal type name
+  const signalName = signal.type.charAt(0).toUpperCase() + signal.type.slice(1);
+
+  return (
+    <div
+      className={`absolute ${positionClasses[position]} flex items-center gap-2 z-30 transition-all duration-300`}
+      style={{
+        opacity,
+      }}
+    >
+      {/* Indicator circle/bar */}
+      <div
+        className="rounded-full shadow-lg border-2 border-white"
+        style={{
+          width: `${actualWidth}px`,
+          height: `${actualHeight}px`,
+          backgroundColor: color,
+          boxShadow: `0 0 ${intensityLevel === 'high' ? '12px' : intensityLevel === 'medium' ? '8px' : '4px'} ${color}40`,
+        }}
+        title={`${signalName}: ${intensity}%`}
+      >
+        {/* Intensity fill gradient */}
+        <div
+          className="w-full h-full rounded-full"
+          style={{
+            background: `radial-gradient(circle, ${color}ff ${intensity}%, ${color}00 ${intensity}%)`,
+          }}
+        />
+      </div>
+
+      {/* Label and value */}
+      {(showLabel || showValue) && (
+        <div className="bg-black bg-opacity-70 px-2 py-1 rounded text-white flex items-center gap-2">
+          {showLabel && (
+            <span className={`${baseSize.fontSize} font-medium`} style={{ color }}>
+              {signalName}
+            </span>
+          )}
+          {showValue && (
+            <span className={`${baseSize.fontSize} font-bold`}>
+              {intensity}%
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
