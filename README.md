@@ -22,7 +22,8 @@ npm run dev
 
 ## Environment Variables
 
-- `INTERHUMAN_API_KEY`: Your Interhuman AI API key
+- `INTERHUMAN_API_KEY_ID`: Your Interhuman AI API key ID
+- `INTERHUMAN_API_KEY_SECRET`: Your Interhuman AI API key secret
 - `INTERHUMAN_API_URL`: Interhuman AI API endpoint URL (default: https://api.interhuman.ai)
 
 ## Project Structure
