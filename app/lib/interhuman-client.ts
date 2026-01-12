@@ -272,6 +272,8 @@ export class InterhumanAPIClient {
             'interest': 75,
             'frustration': 70,
             'uncertainty': 60,
+            'confidence': 75,
+            'skepticism': 65,
           };
           
           // Use type-based intensity if available, otherwise use duration-based calculation

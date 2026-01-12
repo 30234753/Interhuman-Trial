@@ -3,7 +3,7 @@
  */
 
 export interface BehavioralSignal {
-  type: 'stress' | 'engagement' | 'confusion' | 'hesitation' | 'agreement' | 'disagreement' | 'disengagement';
+  type: 'agreement' | 'confidence' | 'confusion' | 'disagreement' | 'disengagement' | 'engagement' | 'frustration' | 'hesitation' | 'interest' | 'skepticism' | 'stress' | 'uncertainty';
   intensity: number; // 0-100 scale
   timestamp: number;
 }

@@ -12,30 +12,21 @@ export interface FeedbackOverlayProps {
 }
 
 /**
- * Position mapping for different signal types
- * Distributes signals around the video feed to avoid overlap
- */
-const SIGNAL_POSITIONS: Record<BehavioralSignal['type'], BehavioralIndicatorProps['position']> = {
-  stress: 'top-left',
-  engagement: 'top-right',
-  confusion: 'bottom-left',
-  hesitation: 'bottom-right',
-  agreement: 'top',
-  disagreement: 'bottom',
-  disengagement: 'left',
-};
-
-/**
- * Signal priority for ordering (higher priority signals shown first)
+ * Signal priority for ordering (lower numbers = higher priority, shown first)
  */
 const SIGNAL_PRIORITY: Record<BehavioralSignal['type'], number> = {
   stress: 1,
   engagement: 2,
   confusion: 3,
-  hesitation: 4,
-  agreement: 5,
+  frustration: 4,
+  hesitation: 5,
   disagreement: 6,
   disengagement: 7,
+  uncertainty: 8,
+  skepticism: 9,
+  agreement: 10,
+  interest: 11,
+  confidence: 12,
 };
 
 /**
@@ -62,19 +53,50 @@ export default function FeedbackOverlay({
     return null;
   }
 
+  // Calculate positioning for signals
+  // 1-3 signals: horizontal distribution (left, center, right for 3)
+  // 4+ signals: stack vertically in rows (3 per row, with vertical spacing)
+  const getSignalPosition = (index: number, total: number): { horizontalOffset: number; verticalOffset: number } => {
+    if (total === 1) {
+      // Single signal: center
+      return { horizontalOffset: 0, verticalOffset: 0 };
+    } else if (total === 2) {
+      // Two signals: left and right
+      return { horizontalOffset: index === 0 ? -100 : 100, verticalOffset: 0 };
+    } else if (total === 3) {
+      // Three signals: left, center, right (increased spacing to prevent overlap)
+      const offsets = [-180, 0, 180];
+      return { horizontalOffset: offsets[index], verticalOffset: 0 };
+    } else {
+      // 4+ signals: stack in rows of 3
+      const signalsPerRow = 3;
+      const rowIndex = Math.floor(index / signalsPerRow);
+      const colIndex = index % signalsPerRow;
+      const rowSpacing = 60; // Vertical spacing between rows in pixels
+      const horizontalOffsets = [-180, 0, 180]; // Left, center, right positions (increased spacing)
+      
+      return {
+        horizontalOffset: horizontalOffsets[colIndex],
+        verticalOffset: rowIndex * rowSpacing,
+      };
+    }
+  };
+
+  // Limit signals shown in compact mode
+  const signalsToShow = compact ? sortedSignals.slice(0, 6) : sortedSignals;
+
   return (
     <div className={`absolute inset-0 pointer-events-none ${className}`}>
-      {sortedSignals.map((signal, index) => {
-        // For compact mode, only show top 4 signals to avoid clutter
-        if (compact && index >= 4) {
-          return null;
-        }
+      {signalsToShow.map((signal, index) => {
+        const { horizontalOffset, verticalOffset } = getSignalPosition(index, signalsToShow.length);
 
         return (
           <BehavioralIndicator
             key={`${signal.type}-${signal.timestamp}`}
             signal={signal}
-            position={SIGNAL_POSITIONS[signal.type]}
+            position="custom"
+            customOffset={horizontalOffset}
+            customVerticalOffset={verticalOffset}
             size={compact ? 'small' : 'medium'}
             showLabel={showLabels}
             showValue={showValues}
@@ -84,7 +106,7 @@ export default function FeedbackOverlay({
 
       {/* Optional: Display a summary indicator showing overall state */}
       {sortedSignals.length > 0 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 glass-dark px-4 py-2 rounded-full pointer-events-auto border border-white/10 animate-scale-in backdrop-blur-xl">
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 glass-dark px-4 py-2 rounded-full pointer-events-auto border border-white/10 animate-scale-in backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span className="text-white text-xs font-semibold tracking-wide">

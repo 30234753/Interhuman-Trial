@@ -24,6 +24,11 @@ const SIGNAL_COLORS: Record<string, string> = {
   agreement: '#ff8c42', // orange variant
   disagreement: '#c2410c', // orange-800
   disengagement: '#9a3412', // orange-900
+  confidence: '#f97316', // orange-500
+  frustration: '#ea580c', // orange-600
+  interest: '#fb923c', // orange-400
+  skepticism: '#c2410c', // orange-800
+  uncertainty: '#fdba74', // orange-300
 };
 
 /**
@@ -38,6 +43,11 @@ function getSignalLabel(signalType: string): string {
     agreement: 'Agreement',
     disagreement: 'Disagreement',
     disengagement: 'Disengagement',
+    confidence: 'Confidence',
+    frustration: 'Frustration',
+    interest: 'Interest',
+    skepticism: 'Skepticism',
+    uncertainty: 'Uncertainty',
   };
   return labels[signalType] || signalType;
 }
