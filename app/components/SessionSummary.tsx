@@ -228,12 +228,6 @@ export default function SessionSummary({
                 </span>
               </div>
             </div>
-            <div className="pt-2 border-t border-white/10">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Avg Stress</p>
-              <p className="text-2xl font-bold text-orange-500">
-                {stats?.averageStressScore !== null && stats?.averageStressScore !== undefined ? stats.averageStressScore : 'N/A'}
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -339,8 +333,8 @@ export default function SessionSummary({
             ))}
           </div>
         ) : (
-          <div className="glass-dark rounded-lg p-3 border border-white/10 text-center py-4">
-            <p className="text-gray-400 text-xs">No insights available yet. Complete a session to see behavioral insights.</p>
+          <div className="glass-dark rounded-lg p-3 border border-white/10 text-center py-8">
+            <p className="text-gray-400 text-sm">No insights available yet. Complete a session to see behavioral insights.</p>
           </div>
         )}
       </div>

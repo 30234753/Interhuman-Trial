@@ -70,13 +70,6 @@ export default function Home() {
     setSummaryData(null);
   };
 
-  const getStatusColor = () => {
-    if (streamStatus.includes('Error')) return 'text-red-500';
-    if (streamStatus.includes('active')) return 'text-orange-400';
-    if (streamStatus.includes('stopped')) return 'text-gray-400';
-    return 'text-orange-500';
-  };
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
       {/* Background decorative elements */}
@@ -98,31 +91,7 @@ export default function Home() {
         
         {/* Session Controls */}
         <div className="mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <SessionControls />
-        </div>
-
-        {/* Status Card */}
-        <div className="glass-dark rounded-2xl p-4 md:p-6 mb-6 backdrop-blur-xl border border-white/10 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${getStatusColor().replace('text-', 'bg-')} animate-pulse`}></div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider">Status</p>
-                <p className={`text-base md:text-lg font-semibold ${getStatusColor()} transition-colors duration-300`}>
-                  {streamStatus}
-                </p>
-              </div>
-            </div>
-            {currentSignals.length > 0 && (
-              <div className="flex items-center gap-2 animate-scale-in">
-                <div className="px-3 py-1.5 bg-orange-500/20 backdrop-blur-sm rounded-full border border-orange-500/30">
-                  <span className="text-sm font-medium text-orange-300">
-                    {currentSignals.length} signal{currentSignals.length !== 1 ? 's' : ''} active
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+          <SessionControls streamStatus={streamStatus} />
         </div>
 
         {/* Video Player and Session Summary - Side by Side */}

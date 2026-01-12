@@ -7,6 +7,7 @@ export interface SessionControlsProps {
   onSessionStart?: (sessionId: string) => void;
   onSessionStop?: () => void;
   className?: string;
+  streamStatus?: string;
 }
 
 /**
@@ -16,6 +17,7 @@ export default function SessionControls({
   onSessionStart,
   onSessionStop,
   className = '',
+  streamStatus = 'Not started',
 }: SessionControlsProps) {
   const { sessionState, startSession, stopSession } = useSession();
   const [duration, setDuration] = useState<number>(0);
@@ -92,11 +94,18 @@ export default function SessionControls({
     }
   }, [sessionState.isActive, stopSession, onSessionStop]);
 
+  const getStatusColor = () => {
+    if (streamStatus.includes('Error')) return 'text-red-500';
+    if (streamStatus.includes('active')) return 'text-orange-400';
+    if (streamStatus.includes('stopped')) return 'text-gray-400';
+    return 'text-orange-500';
+  };
+
   return (
     <div className={`glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-white/10 ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Session Status */}
-        <div className="flex items-center gap-4">
+        {/* Session Status and Stream Status */}
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div
               className={`w-3 h-3 rounded-full ${
@@ -109,6 +118,17 @@ export default function SessionControls({
                 sessionState.isActive ? 'text-orange-400' : 'text-gray-400'
               }`}>
                 {sessionState.isActive ? 'Active' : 'Inactive'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Stream Status */}
+          <div className="flex items-center gap-3">
+            <div className={`w-2 h-2 rounded-full ${getStatusColor().replace('text-', 'bg-')} animate-pulse`}></div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Status</p>
+              <p className={`text-base md:text-lg font-semibold ${getStatusColor()} transition-colors duration-300`}>
+                {streamStatus}
               </p>
             </div>
           </div>
