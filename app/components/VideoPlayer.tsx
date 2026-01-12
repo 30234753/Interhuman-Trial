@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import VideoCapture, { VideoCaptureProps } from './VideoCapture';
 import FeedbackOverlay from './FeedbackOverlay';
 import { BehavioralSignal } from '@/app/lib/types';
+import { SignalAggregator } from '@/app/lib/signal-aggregator';
 
 export interface VideoPlayerProps extends Omit<VideoCaptureProps, 'onStreamReady'> {
   onStreamReady?: (stream: MediaStream) => void;
@@ -29,6 +30,13 @@ export default function VideoPlayer({
   const [currentSignals, setCurrentSignals] = useState<BehavioralSignal[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isStreamActiveRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Signal aggregator for tracking signals over time window (15 seconds)
+  const signalAggregator = useMemo(() => {
+    return new SignalAggregator({ windowMs: 15000 });
+  }, []);
 
   /**
    * Gets the video element from the VideoCapture component
@@ -42,6 +50,11 @@ export default function VideoPlayer({
    * Captures a frame from the video stream and sends it for analysis
    */
   const captureAndAnalyze = useCallback(async () => {
+    // Check if stream is still active before starting analysis
+    if (!isStreamActiveRef.current) {
+      return;
+    }
+
     const video = getVideoElement();
     if (!video || !enabled || isAnalyzing) {
       return;
@@ -52,7 +65,16 @@ export default function VideoPlayer({
       return;
     }
 
+    // Double-check stream is still active after async checks
+    if (!isStreamActiveRef.current) {
+      return;
+    }
+
     setIsAnalyzing(true);
+
+    // Create new abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     try {
       // Create a canvas to capture the current frame
@@ -71,7 +93,12 @@ export default function VideoPlayer({
       // Convert canvas to base64
       const base64Data = canvas.toDataURL('image/jpeg', 0.8);
 
-      // Send frame for analysis
+      // Check again if stream is still active before making request
+      if (!isStreamActiveRef.current) {
+        return;
+      }
+
+      // Send frame for analysis with abort signal
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -84,7 +111,13 @@ export default function VideoPlayer({
             timestamp: Date.now(),
           },
         }),
+        signal: abortController.signal,
       });
+
+      // Check if stream is still active after fetch completes
+      if (!isStreamActiveRef.current) {
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -94,21 +127,53 @@ export default function VideoPlayer({
 
       const data = await response.json();
       
-      // Update signals if we got valid data
+      // Final check before updating signals
+      if (!isStreamActiveRef.current) {
+        return;
+      }
+      
+      // Update signals if we got valid data and stream is still active
       if (data.signals && Array.isArray(data.signals)) {
-        const signals: BehavioralSignal[] = data.signals.map((signal: any) => ({
+        const currentTime = Date.now();
+        const baseSignals: BehavioralSignal[] = data.signals.map((signal: any) => ({
           type: signal.type,
-          intensity: signal.intensity || 0,
-          timestamp: signal.timestamp || Date.now(),
+          intensity: signal.intensity || 0, // Base intensity from API
+          timestamp: signal.timestamp || currentTime,
         }));
 
-        setCurrentSignals(signals);
-        onSignalsUpdate?.(signals);
+        // Add signals to aggregator for history tracking
+        signalAggregator.addSignals(baseSignals, currentTime);
+
+        // Calculate duration-based intensities using persistence metrics
+        const enhancedSignals: BehavioralSignal[] = baseSignals.map((signal) => {
+          const baseIntensity = signal.intensity;
+          const calculatedIntensity = signalAggregator.calculateIntensity(
+            signal.type,
+            baseIntensity,
+            currentTime
+          );
+
+          return {
+            ...signal,
+            intensity: calculatedIntensity,
+          };
+        });
+
+        setCurrentSignals(enhancedSignals);
+        onSignalsUpdate?.(enhancedSignals);
       }
     } catch (error) {
+      // Ignore abort errors (expected when stream stops)
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Error during frame analysis:', error);
     } finally {
-      setIsAnalyzing(false);
+      // Only clear analyzing state if stream is still active
+      if (isStreamActiveRef.current) {
+        setIsAnalyzing(false);
+      }
+      abortControllerRef.current = null;
     }
   }, [enabled, isAnalyzing, onSignalsUpdate, getVideoElement]);
 
@@ -116,6 +181,9 @@ export default function VideoPlayer({
    * Handles stream ready event and starts analysis loop
    */
   const handleStreamReady = useCallback((stream: MediaStream) => {
+    // Mark stream as active
+    isStreamActiveRef.current = true;
+
     // Start periodic analysis if enabled
     if (enabled && analysisInterval > 0) {
       // Clear any existing interval
@@ -136,17 +204,33 @@ export default function VideoPlayer({
    * Handles stream stop and cleans up analysis interval
    */
   const handleStreamStop = useCallback(() => {
+    // Mark stream as inactive
+    isStreamActiveRef.current = false;
+
     // Clear analysis interval
     if (analysisIntervalRef.current) {
       clearInterval(analysisIntervalRef.current);
       analysisIntervalRef.current = null;
     }
 
-    // Clear current signals
+    // Abort any in-flight analysis requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Clear analyzing state
+    setIsAnalyzing(false);
+
+    // Clear signal aggregator history
+    signalAggregator.clear();
+
+    // Clear current signals immediately
     setCurrentSignals([]);
+    onSignalsUpdate?.([]);
 
     videoCaptureProps.onStreamStop?.();
-  }, [videoCaptureProps]);
+  }, [videoCaptureProps, onSignalsUpdate]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -177,7 +261,7 @@ export default function VideoPlayer({
   }, [enabled, analysisInterval, captureAndAnalyze, getVideoElement]);
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative w-full h-full ${className}`}>
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
 
@@ -186,21 +270,27 @@ export default function VideoPlayer({
         {...videoCaptureProps}
         onStreamReady={handleStreamReady}
         onStreamStop={handleStreamStop}
-        className="relative z-10"
+        className="absolute inset-0 z-10"
       />
 
       {/* Feedback overlay */}
       <FeedbackOverlay
         signals={currentSignals}
-        showLabels={false}
-        showValues={false}
-        compact={true}
+        showLabels={true}
+        showValues={true}
+        compact={false}
       />
 
       {/* Analysis status indicator */}
       {isAnalyzing && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-blue-600 bg-opacity-80 px-3 py-1 rounded-full">
-          <span className="text-white text-xs font-medium">Analyzing...</span>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 glass-dark px-4 py-2 rounded-full border border-blue-500/30 animate-scale-in shadow-lg" style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-400/30"></div>
+              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-blue-400 absolute top-0 left-0"></div>
+            </div>
+            <span className="text-white text-xs font-semibold tracking-wide">Analyzing...</span>
+          </div>
         </div>
       )}
     </div>

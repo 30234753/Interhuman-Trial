@@ -243,34 +243,39 @@ export default function VideoCapture({
   }, [startStream, stopStream]);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-full h-full ${className}`}>
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="w-full h-full object-cover rounded-lg"
+        className="w-full h-full object-cover rounded-lg shadow-2xl"
       />
       
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg z-20 animate-fade-in">
           <div className="text-white text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
-            <p>Accessing camera...</p>
+            <div className="relative mx-auto mb-4">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500/20"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 absolute top-0 left-0"></div>
+            </div>
+            <p className="text-lg font-medium">Accessing camera...</p>
+            <p className="text-sm text-gray-400 mt-1">Please allow camera access when prompted</p>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 rounded-lg z-10">
-          <div className="text-white text-center p-4">
-            <p className="text-red-400 mb-2">⚠️ {error}</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md rounded-lg z-20 animate-fade-in">
+          <div className="text-white text-center p-6 max-w-md">
+            <div className="mb-4 text-5xl">⚠️</div>
+            <p className="text-red-400 mb-4 text-lg font-medium">{error}</p>
             <button
               onClick={() => {
                 setError(null);
                 startStream();
               }}
-              className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             >
               Try Again
             </button>
@@ -279,28 +284,40 @@ export default function VideoCapture({
       )}
 
       {isStreaming && !isLoading && !error && (
-        <div className="absolute top-4 right-4 z-20">
+        <div className="absolute top-4 right-4 z-20 animate-scale-in">
           <button
             onClick={() => {
               stopStream();
             }}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium shadow-lg"
+            className="px-4 py-2.5 bg-red-600/90 hover:bg-red-700 active:scale-95 backdrop-blur-sm rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border border-red-500/30 flex items-center gap-2"
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+            </svg>
             Stop Camera
           </button>
         </div>
       )}
 
       {!isStreaming && !isLoading && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 rounded-lg">
-          <div className="text-white text-center">
-            <p className="mb-4">Camera not active</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-sm rounded-lg animate-fade-in">
+          <div className="flex flex-col items-center justify-center gap-8 text-white text-center px-4">
+            <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/30">
+              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-gray-300 text-lg font-medium">Camera not active</p>
             <button
               onClick={() => {
                 startStream();
               }}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium"
+              className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
             >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
               Start Camera
             </button>
           </div>

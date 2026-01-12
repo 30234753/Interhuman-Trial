@@ -20,6 +20,7 @@ const SIGNAL_COLORS: Record<BehavioralSignal['type'], string> = {
   hesitation: '#eab308', // yellow-500
   agreement: '#3b82f6', // blue-500
   disagreement: '#8b5cf6', // purple-500
+  disengagement: '#6b7280', // gray-500
 };
 
 /**
@@ -78,11 +79,11 @@ export default function BehavioralIndicator({
   const sizeMultiplier = getSizeMultiplier(intensity);
   const intensityLevel = getIntensityLevel(intensity);
 
-  // Base sizes
+  // Base sizes - increased for better visibility
   const baseSizes = {
-    small: { width: 12, height: 12, fontSize: 'text-xs' },
-    medium: { width: 16, height: 16, fontSize: 'text-sm' },
-    large: { width: 20, height: 20, fontSize: 'text-base' },
+    small: { width: 20, height: 20, fontSize: 'text-xs' },
+    medium: { width: 24, height: 24, fontSize: 'text-sm' },
+    large: { width: 28, height: 28, fontSize: 'text-base' },
   };
 
   const baseSize = baseSizes[size];
@@ -106,41 +107,52 @@ export default function BehavioralIndicator({
 
   return (
     <div
-      className={`absolute ${positionClasses[position]} flex items-center gap-2 z-30 transition-all duration-300`}
+      className={`absolute ${positionClasses[position]} flex items-center gap-2 z-30 transition-all duration-500 ease-out animate-scale-in`}
       style={{
         opacity,
       }}
     >
       {/* Indicator circle/bar */}
       <div
-        className="rounded-full shadow-lg border-2 border-white"
+        className="rounded-full shadow-lg border-2 border-white/80 transition-all duration-500"
         style={{
           width: `${actualWidth}px`,
           height: `${actualHeight}px`,
           backgroundColor: color,
-          boxShadow: `0 0 ${intensityLevel === 'high' ? '12px' : intensityLevel === 'medium' ? '8px' : '4px'} ${color}40`,
+          boxShadow: `0 0 ${intensityLevel === 'high' ? '16px' : intensityLevel === 'medium' ? '10px' : '6px'} ${color}${intensityLevel === 'high' ? '60' : intensityLevel === 'medium' ? '50' : '40'}`,
+          animation: intensityLevel === 'high' ? 'pulse-glow 2s ease-in-out infinite' : 'none',
         }}
         title={`${signalName}: ${intensity}%`}
       >
         {/* Intensity fill gradient */}
         <div
-          className="w-full h-full rounded-full"
+          className="w-full h-full rounded-full transition-all duration-500"
           style={{
             background: `radial-gradient(circle, ${color}ff ${intensity}%, ${color}00 ${intensity}%)`,
           }}
         />
+        {/* Pulsing ring for high intensity */}
+        {intensityLevel === 'high' && (
+          <div
+            className="absolute inset-0 rounded-full border-2 animate-ping"
+            style={{
+              borderColor: color,
+              opacity: 0.5,
+            }}
+          />
+        )}
       </div>
 
       {/* Label and value */}
       {(showLabel || showValue) && (
-        <div className="bg-black bg-opacity-70 px-2 py-1 rounded text-white flex items-center gap-2">
+        <div className="glass-dark px-3 py-1.5 rounded-lg text-white flex items-center gap-2 shadow-xl border border-white/10 backdrop-blur-xl transition-all duration-300">
           {showLabel && (
-            <span className={`${baseSize.fontSize} font-medium`} style={{ color }}>
+            <span className={`${baseSize.fontSize} font-semibold drop-shadow-md`} style={{ color }}>
               {signalName}
             </span>
           )}
           {showValue && (
-            <span className={`${baseSize.fontSize} font-bold`}>
+            <span className={`${baseSize.fontSize} font-bold drop-shadow-md bg-white/10 px-1.5 py-0.5 rounded`}>
               {intensity}%
             </span>
           )}
