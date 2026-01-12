@@ -115,17 +115,60 @@ export class InterhumanAPIClient {
     let accessToken = await this.getAccessToken();
 
     try {
+      // Convert base64 string to Blob for multipart/form-data
+      let videoBlob: Blob;
+      let base64Data: string;
+      let mimeType: string = 'video/mp4';
+      
+      if (request.format === 'url') {
+        // If it's a URL, we need to fetch it first or handle differently
+        throw new Error('URL format not yet supported for upload endpoint');
+      } else {
+        // Handle base64 data
+        // Remove data URL prefix if present (e.g., "data:video/mp4;base64,")
+        base64Data = request.videoData.includes(',') 
+          ? request.videoData.split(',')[1] 
+          : request.videoData;
+        
+        // Convert base64 to binary
+        const binaryData = Buffer.from(base64Data, 'base64');
+        
+        // Determine MIME type from data URL or default to video/mp4
+        if (request.videoData.startsWith('data:')) {
+          const mimeMatch = request.videoData.match(/data:([^;]+)/);
+          if (mimeMatch) {
+            mimeType = mimeMatch[1];
+          }
+        }
+        
+        // Create Blob from buffer
+        videoBlob = new Blob([binaryData], { type: mimeType });
+      }
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', videoBlob, 'video.mp4');
+      
+      // Add metadata if provided
+      if (request.metadata) {
+        if (request.metadata.frameId) {
+          formData.append('frameId', request.metadata.frameId);
+        }
+        if (request.metadata.timestamp) {
+          formData.append('timestamp', request.metadata.timestamp.toString());
+        }
+        if (request.metadata.sessionId) {
+          formData.append('sessionId', request.metadata.sessionId);
+        }
+      }
+
       let response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
+          // Don't set Content-Type - let fetch set it with boundary for multipart/form-data
         },
-        body: JSON.stringify({
-          video: request.videoData,
-          format: request.format || 'base64',
-          metadata: request.metadata,
-        }),
+        body: formData,
       });
 
       // If we get a 401, the token might have expired, try refreshing once
@@ -139,14 +182,9 @@ export class InterhumanAPIClient {
         response = await fetch(url, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({
-            video: request.videoData,
-            format: request.format || 'base64',
-            metadata: request.metadata,
-          }),
+          body: formData,
         });
       }
 
@@ -156,11 +194,18 @@ export class InterhumanAPIClient {
         
         try {
           const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorJson.error || errorMessage;
+          errorMessage = errorJson.message || errorJson.error || errorJson.detail || errorMessage;
+          // Include full error details for debugging
+          console.error('Interhuman AI API Error Details:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorJson
+          });
         } catch {
           errorMessage = errorText || errorMessage;
+          console.error('Interhuman AI API Raw Error:', errorText);
         }
-
+      
         throw new Error(errorMessage);
       }
 
