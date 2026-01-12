@@ -37,32 +37,10 @@ export default function VideoCapture({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // #region agent log
-  const logDebug = (message: string, data: any, hypothesisId?: string) => {
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'VideoCapture.tsx',
-        message,
-        data: { ...data, isStreaming, isLoading, error },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: hypothesisId || 'ALL'
-      })
-    }).catch(() => {});
-  };
-  // #endregion
-
   /**
    * Stops the video stream and releases camera resources
    */
   const stopStream = useCallback(() => {
-    // #region agent log
-    logDebug('stopStream called', { hasStream: !!streamRef.current, currentError: error }, 'A');
-    // #endregion
-    
     if (streamRef.current) {
       // Stop all tracks in the stream
       streamRef.current.getTracks().forEach((track) => {
@@ -78,9 +56,6 @@ export default function VideoCapture({
 
     setIsStreaming(false);
     // Don't clear error here - let it persist
-    // #region agent log
-    logDebug('stopStream calling onStreamStop', {}, 'A');
-    // #endregion
     onStreamStop?.();
   }, [onStreamStop]);
 
@@ -88,16 +63,9 @@ export default function VideoCapture({
    * Starts the video stream by requesting access to the user's webcam
    */
   const startStream = useCallback(async () => {
-    // #region agent log
-    logDebug('startStream called', { hasExistingStream: !!streamRef.current, currentState: { isStreaming, isLoading, error } }, 'ALL');
-    // #endregion
-    
     // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       const errorMsg = 'getUserMedia is not supported in this browser';
-      // #region agent log
-      logDebug('getUserMedia not supported', { errorMsg }, 'ALL');
-      // #endregion
       setError(errorMsg);
       onStreamError?.(new Error(errorMsg));
       return;
@@ -105,40 +73,40 @@ export default function VideoCapture({
 
     // Stop existing stream if any
     if (streamRef.current) {
-      // #region agent log
-      logDebug('Stopping existing stream before starting new one', {}, 'D');
-      // #endregion
       stopStream();
     }
 
     setIsLoading(true);
     setError(null);
-    // #region agent log
-    logDebug('State set: isLoading=true, error=null', {}, 'B');
-    // #endregion
 
     try {
-      // #region agent log
-      logDebug('Calling getUserMedia', { constraints }, 'E');
-      // #endregion
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      // #region agent log
-      logDebug('getUserMedia succeeded', { streamId: stream.id, tracks: stream.getTracks().length }, 'E');
-      // #endregion
       streamRef.current = stream;
+
+      // Set up track end listeners to detect camera disconnection
+      stream.getTracks().forEach((track) => {
+        track.onended = () => {
+          // Check if this stream is still the active one
+          if (streamRef.current === stream) {
+            setError('Camera disconnected. Please reconnect your camera and try again.');
+            setIsStreaming(false);
+            setIsLoading(false);
+            onStreamError?.(new Error('Camera disconnected'));
+            // Clean up the stream reference
+            streamRef.current = null;
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+          }
+        };
+      });
 
       // Set the stream to the video element
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         // Play the video once metadata is loaded
         videoRef.current.onloadedmetadata = () => {
-          // #region agent log
-          logDebug('Video metadata loaded, attempting play', {}, 'E');
-          // #endregion
           videoRef.current?.play().catch((err) => {
-            // #region agent log
-            logDebug('Video play failed', { error: err.message, errorName: err.name }, 'E');
-            // #endregion
             console.error('Error playing video:', err);
             setError('Failed to play video stream');
             setIsLoading(false);
@@ -146,13 +114,25 @@ export default function VideoCapture({
             onStreamError?.(new Error('Failed to play video stream'));
           });
         };
+        
+        // Also listen for video element errors (e.g., when stream stops unexpectedly)
+        videoRef.current.onerror = () => {
+          // Only show error if we have an active stream and no existing error
+          if (streamRef.current && streamRef.current === stream) {
+            setError('Camera stream error. Please check your camera connection.');
+            setIsStreaming(false);
+            setIsLoading(false);
+            onStreamError?.(new Error('Camera stream error'));
+            streamRef.current = null;
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+          }
+        };
       }
 
       setIsStreaming(true);
       setIsLoading(false);
-      // #region agent log
-      logDebug('State set: isStreaming=true, isLoading=false, calling onStreamReady', {}, 'E');
-      // #endregion
       onStreamReady?.(stream);
     } catch (err) {
       // Log the full error for debugging
@@ -162,56 +142,75 @@ export default function VideoCapture({
       const error = err as DOMException;
       let errorMessage = 'Failed to access webcam';
       
-      // #region agent log
-      logDebug('getUserMedia error caught', { errorName: error.name, errorMessage: error.message, errorCode: error.code }, 'ALL');
-      // #endregion
+      // Try to enumerate devices to determine if camera exists
+      let hasVideoDevices = false;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        hasVideoDevices = devices.some(device => device.kind === 'videoinput');
+      } catch (enumError) {
+        // If enumeration fails, we can't determine device availability
+      }
       
-      // Check error name or message
+      // Check error name or message - prioritize NotFoundError for missing cameras
       if (error.name) {
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          errorMessage = 'Camera permission denied. Please allow camera access and try again.';
-        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
           errorMessage = 'No camera found. Please connect a camera and try again.';
+        } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          errorMessage = 'Camera permission denied. Please allow camera access and try again.';
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-          errorMessage = 'Camera is already in use by another application.';
+          // NotReadableError can mean either "in use" or "not found"
+          // Check if we have video devices available
+          if (!hasVideoDevices) {
+            errorMessage = 'No camera found. Please connect a camera and try again.';
+          } else {
+            // Check error message for keywords that indicate "not found" vs "in use"
+            const errorMsgLower = (error.message || '').toLowerCase();
+            if (errorMsgLower.includes('not found') || errorMsgLower.includes('no device') || 
+                errorMsgLower.includes('device not found') || errorMsgLower.includes('no camera') ||
+                errorMsgLower.includes('could not start video source')) {
+              // "Could not start video source" often means device not found/plugged in
+              errorMessage = 'No camera found. Please connect a camera and try again.';
+            } else {
+              errorMessage = 'Camera is already in use by another application.';
+            }
+          }
         } else if (error.name === 'OverconstrainedError') {
           errorMessage = 'Camera does not support the requested constraints.';
         } else if (error.name === 'SecurityError') {
           errorMessage = 'Camera access blocked due to security restrictions.';
         } else {
-          errorMessage = `Camera error: ${error.name}. ${error.message || ''}`;
+          // Check error message for keywords that indicate camera not found
+          const errorMsgLower = (error.message || '').toLowerCase();
+          if (errorMsgLower.includes('not found') || errorMsgLower.includes('no device') || 
+              errorMsgLower.includes('device not found') || errorMsgLower.includes('no camera')) {
+            errorMessage = 'No camera found. Please connect a camera and try again.';
+          } else {
+            errorMessage = `Camera error: ${error.name}. ${error.message || ''}`;
+          }
         }
       } else if (error.message) {
-        errorMessage = `Camera error: ${error.message}`;
+        // Check error message for keywords
+        const errorMsgLower = error.message.toLowerCase();
+        if (errorMsgLower.includes('not found') || errorMsgLower.includes('no device') || 
+            errorMsgLower.includes('device not found') || errorMsgLower.includes('no camera')) {
+          errorMessage = 'No camera found. Please connect a camera and try again.';
+        } else {
+          errorMessage = `Camera error: ${error.message}`;
+        }
       }
 
       console.error('Setting error state:', errorMessage);
-      // #region agent log
-      logDebug('Setting error state before setError', { errorMessage, currentState: { isStreaming, isLoading, error } }, 'B');
-      // #endregion
       setError(errorMessage);
       setIsLoading(false);
       setIsStreaming(false);
-      // #region agent log
-      logDebug('State set: error set, isLoading=false, isStreaming=false, calling onStreamError', { errorMessage }, 'C');
-      // #endregion
       onStreamError?.(new Error(errorMessage));
-      // #region agent log
-      logDebug('After onStreamError callback', { errorMessage }, 'C');
-      // #endregion
     }
   }, [constraints, onStreamReady, onStreamError, stopStream]);
 
   // Auto-start stream if autoStart is true (only once)
   useEffect(() => {
-    // #region agent log
-    logDebug('Auto-start effect running', { autoStart, isStreaming, isLoading, hasAttempted: hasAttemptedAutoStart.current }, 'ALL');
-    // #endregion
     if (autoStart && !isStreaming && !isLoading && !hasAttemptedAutoStart.current) {
       hasAttemptedAutoStart.current = true;
-      // #region agent log
-      logDebug('Auto-starting stream', {}, 'ALL');
-      // #endregion
       startStream();
     }
   }, [autoStart, isStreaming, isLoading, startStream]);
@@ -219,9 +218,6 @@ export default function VideoCapture({
   // Cleanup on unmount - use refs to avoid dependency issues
   useEffect(() => {
     return () => {
-      // #region agent log
-      logDebug('Cleanup effect: cleaning up stream on unmount', { hasStream: !!streamRef.current }, 'A');
-      // #endregion
       // Use refs directly to avoid dependency on stopStream callback
       // This prevents the cleanup from running when stopStream callback changes
       if (streamRef.current) {
@@ -286,9 +282,6 @@ export default function VideoCapture({
         <div className="absolute top-4 right-4 z-20">
           <button
             onClick={() => {
-              // #region agent log
-              logDebug('Stop Camera button clicked', { currentState: { isStreaming, isLoading, error } }, 'ALL');
-              // #endregion
               stopStream();
             }}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white font-medium shadow-lg"
@@ -304,9 +297,6 @@ export default function VideoCapture({
             <p className="mb-4">Camera not active</p>
             <button
               onClick={() => {
-                // #region agent log
-                logDebug('Start Camera button clicked', { currentState: { isStreaming, isLoading, error } }, 'ALL');
-                // #endregion
                 startStream();
               }}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded text-white font-medium"

@@ -24,40 +24,10 @@ export default function Home() {
             }}
             onStreamError={(error) => {
               console.error('Stream error:', error);
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  location: 'page.tsx:onStreamError',
-                  message: 'Parent onStreamError called',
-                  data: { errorMessage: error.message },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'C'
-                })
-              }).catch(() => {});
-              // #endregion
               setStreamStatus(`Error: ${error.message}`);
             }}
             onStreamStop={() => {
               console.log('Stream stopped');
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  location: 'page.tsx:onStreamStop',
-                  message: 'Parent onStreamStop called',
-                  data: {},
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'A'
-                })
-              }).catch(() => {});
-              // #endregion
               setStreamStatus('Stream stopped');
             }}
             className="w-full aspect-video"
