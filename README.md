@@ -10,7 +10,7 @@ npm install
 ```
 
 2. Set up environment variables:
-   - Copy `.env.local.example` to `.env.local`
+   - Copy `.env.example` to `.env.local`
    - Add your Interhuman AI API credentials
 
 3. Run the development server:
