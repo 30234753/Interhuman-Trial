@@ -14,6 +14,7 @@ export default function Home() {
     startTime: number;
     endTime: number;
   } | null>(null);
+  const [liveEndTime, setLiveEndTime] = useState<number>(Date.now());
   const { updateSignals, isActive: sessionActive, sessionState } = useSession();
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number } | null>(null);
@@ -60,6 +61,24 @@ export default function Home() {
     
     previousActiveState.current = sessionActive;
   }, [sessionActive, sessionState.startTime, sessionState.signals]);
+
+  // Update live endTime periodically when session is active (to avoid hydration issues)
+  useEffect(() => {
+    if (sessionActive && !summaryData) {
+      // Update immediately on mount
+      setLiveEndTime(Date.now());
+      
+      // Update every second for live display
+      const interval = setInterval(() => {
+        setLiveEndTime(Date.now());
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    } else {
+      // Reset when session ends
+      setLiveEndTime(Date.now());
+    }
+  }, [sessionActive, summaryData]);
 
   const handleCloseSummary = () => {
     setSummaryData(null);
@@ -126,8 +145,8 @@ export default function Home() {
           <div className="w-full">
             <SessionSummary
               signals={summaryData?.signals || (sessionActive ? sessionState.signals : [])}
-              startTime={summaryData?.startTime || sessionState.startTime || Date.now()}
-              endTime={summaryData?.endTime || (sessionActive ? Date.now() : Date.now())}
+              startTime={summaryData?.startTime || sessionState.startTime || null}
+              endTime={summaryData?.endTime || (sessionActive ? liveEndTime : Date.now())}
               isLive={sessionActive && !summaryData}
               onClose={summaryData ? handleCloseSummary : undefined}
             />

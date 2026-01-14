@@ -35,6 +35,13 @@ export async function POST(request: NextRequest) {
     // Extract request parameters
     const { videoData, format, metadata } = body;
 
+    // #region agent log
+    const fs = require('fs');
+    const logPath = 'f:\\Cursor\\Inhuman Trial\\.cursor\\debug.log';
+    const logEntry = JSON.stringify({location:'route.ts:36',message:'API request received',data:{format,hasVideoData:!!videoData,videoDataLength:videoData?.length||0,videoDataPrefix:videoData?.substring(0,Math.min(100,videoData?.length||0))||'',detectedMimeType:videoData?.match(/^data:([^;,]+)/)?.[1]||'unknown',metadata},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})+'\n';
+    try { fs.appendFileSync(logPath, logEntry); } catch(e) {}
+    // #endregion
+
     // Validate videoData format
     if (typeof videoData !== 'string') {
       return NextResponse.json(
@@ -113,6 +120,11 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+
+    // #region agent log
+    const logEntry2 = JSON.stringify({location:'route.ts:118',message:'API response ready',data:{signalsCount:analysisResult.signals?.length||0,signals:analysisResult.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],metadata:analysisResult.metadata},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})+'\n';
+    try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
+    // #endregion
 
     // Return successful response
     return NextResponse.json(analysisResult, { status: 200 });

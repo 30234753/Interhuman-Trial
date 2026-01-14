@@ -125,29 +125,131 @@ export class InterhumanAPIClient {
         throw new Error('URL format not yet supported for upload endpoint');
       } else {
         // Handle base64 data
-        // Remove data URL prefix if present (e.g., "data:video/mp4;base64,")
-        base64Data = request.videoData.includes(',') 
-          ? request.videoData.split(',')[1] 
-          : request.videoData;
+        // Remove data URL prefix if present (e.g., "data:video/mp4;base64," or "data:video/webm;codecs=vp8,opus;base64,")
+        // Need to find the base64 data after ";base64," since codecs may contain commas
+        if (request.videoData.startsWith('data:')) {
+          const base64Index = request.videoData.indexOf(';base64,');
+          if (base64Index !== -1) {
+            base64Data = request.videoData.substring(base64Index + 8); // 8 = length of ";base64,"
+          } else {
+            // Fallback: try to find the last comma (for data URLs without explicit base64 marker)
+            const lastComma = request.videoData.lastIndexOf(',');
+            if (lastComma !== -1) {
+              base64Data = request.videoData.substring(lastComma + 1);
+            } else {
+              base64Data = request.videoData;
+            }
+          }
+        } else {
+          base64Data = request.videoData;
+        }
         
         // Convert base64 to binary
         const binaryData = Buffer.from(base64Data, 'base64');
         
-        // Determine MIME type from data URL or default to video/mp4
+        // #region agent log
+        const fs = require('fs');
+        const logPath = 'f:\\Cursor\\Inhuman Trial\\.cursor\\debug.log';
+        const logEntry1 = JSON.stringify({location:'interhuman-client.ts:140',message:'Base64 extraction',data:{originalLength:request.videoData.length,base64Length:base64Data.length,base64Prefix:base64Data.substring(0,Math.min(50,base64Data.length)),binaryDataSize:binaryData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'N'})+'\n';
+        try { fs.appendFileSync(logPath, logEntry1); } catch(e) {}
+        // #endregion
+        
+        // Determine MIME type from data URL with improved parsing
+        // Handles formats like:
+        // - "data:video/mp4;base64,"
+        // - "data:video/webm;codecs=vp8,opus;base64,"
+        // - "data:video/webm;base64,"
         if (request.videoData.startsWith('data:')) {
-          const mimeMatch = request.videoData.match(/data:([^;]+)/);
-          if (mimeMatch) {
-            mimeType = mimeMatch[1];
+          // Extract MIME type, handling codecs and parameters
+          // Pattern matches: data:video/webm;codecs=vp8,opus;base64,
+          // We extract just the base MIME type (video/webm) for file extension
+          const mimeMatch = request.videoData.match(/data:([^;,]+)/);
+          if (mimeMatch && mimeMatch[1]) {
+            const detectedMime = mimeMatch[1].trim();
+            // Only use if it's a valid video MIME type
+            if (detectedMime.startsWith('video/')) {
+              mimeType = detectedMime;
+            }
           }
+          // #region agent log
+          const fullMimeMatch = request.videoData.match(/data:([^;]+)/);
+          const logEntry = JSON.stringify({location:'interhuman-client.ts:160',message:'MIME type detection',data:{detectedMimeType:mimeType,fullMimeString:fullMimeMatch?.[1]||'none',hasAudioCodec:request.videoData.includes('opus')||request.videoData.includes('vorbis')||request.videoData.includes('aac')||request.videoData.includes('mp4a'),binaryDataSize:binaryData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})+'\n';
+          try { fs.appendFileSync(logPath, logEntry); } catch(e) {}
+          // #endregion
+        }
+        
+        // Validate MIME type is a video format
+        if (!mimeType.startsWith('video/')) {
+          // Default to video/mp4 if not a video MIME type
+          console.warn(`Invalid or missing video MIME type, defaulting to video/mp4. Received: ${mimeType}`);
+          mimeType = 'video/mp4';
+        }
+        
+        // Validate blob size to prevent sending empty/invalid recordings
+        if (binaryData.length === 0) {
+          throw new Error('Video blob is empty - no data to send');
+        }
+        
+        // Additional validation: check for minimum reasonable size (e.g., at least 1KB)
+        // Very small files might be corrupted or invalid
+        const MIN_VIDEO_SIZE = 1024; // 1KB minimum
+        if (binaryData.length < MIN_VIDEO_SIZE) {
+          console.warn(`Video blob is unusually small (${binaryData.length} bytes), but proceeding with upload`);
         }
         
         // Create Blob from buffer
         videoBlob = new Blob([binaryData], { type: mimeType });
       }
 
+      // Determine file extension based on MIME type
+      // Maps common video MIME types to their file extensions
+      const getFileExtension = (mime: string): string => {
+        const mimeLower = mime.toLowerCase();
+        
+        // WebM formats
+        if (mimeLower.includes('webm')) {
+          return 'webm';
+        }
+        // MP4 formats (including H.264, H.265)
+        if (mimeLower.includes('mp4') || mimeLower.includes('mpeg4')) {
+          return 'mp4';
+        }
+        // OGG formats
+        if (mimeLower.includes('ogg') || mimeLower.includes('ogv')) {
+          return 'ogg';
+        }
+        // QuickTime/MOV formats
+        if (mimeLower.includes('mov') || mimeLower.includes('quicktime')) {
+          return 'mov';
+        }
+        // AVI format
+        if (mimeLower.includes('avi') || mimeLower.includes('x-msvideo')) {
+          return 'avi';
+        }
+        // MKV format
+        if (mimeLower.includes('mkv') || mimeLower.includes('x-matroska')) {
+          return 'mkv';
+        }
+        // 3GP format
+        if (mimeLower.includes('3gp') || mimeLower.includes('3gpp')) {
+          return '3gp';
+        }
+        // FLV format
+        if (mimeLower.includes('flv') || mimeLower.includes('x-flv')) {
+          return 'flv';
+        }
+        
+        // Default to mp4 for unknown video formats (most widely supported)
+        console.warn(`Unknown video MIME type: ${mime}, defaulting to .mp4 extension`);
+        return 'mp4';
+      };
+
+      const fileExtension = getFileExtension(mimeType);
+      const fileName = `video.${fileExtension}`;
+
       // Create FormData
       const formData = new FormData();
-      formData.append('file', videoBlob, 'video.mp4');
+      formData.append('file', videoBlob, fileName);
       
       // Add metadata if provided
       if (request.metadata) {

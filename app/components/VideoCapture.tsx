@@ -83,6 +83,22 @@ export default function VideoCapture({
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
+      // Validate audio tracks are present if audio was requested
+      if (constraints.audio) {
+        const audioTracks = stream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          const errorMsg = 'Microphone permission denied or no microphone available. Please allow microphone access and try again.';
+          setError(errorMsg);
+          setIsLoading(false);
+          setIsStreaming(false);
+          // Stop the stream since audio is required
+          stream.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+          onStreamError?.(new Error(errorMsg));
+          return;
+        }
+      }
+
       // Set up track end listeners to detect camera disconnection
       stream.getTracks().forEach((track) => {
         track.onended = () => {
@@ -154,9 +170,23 @@ export default function VideoCapture({
       // Check error name or message - prioritize NotFoundError for missing cameras
       if (error.name) {
         if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-          errorMessage = 'No camera found. Please connect a camera and try again.';
+          // Check if this is about audio or video
+          const errorMsgLower = (error.message || '').toLowerCase();
+          if (errorMsgLower.includes('microphone') || errorMsgLower.includes('audio')) {
+            errorMessage = 'No microphone found. Please connect a microphone and try again.';
+          } else {
+            errorMessage = 'No camera found. Please connect a camera and try again.';
+          }
         } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          errorMessage = 'Camera permission denied. Please allow camera access and try again.';
+          // Check if this is about audio or video
+          const errorMsgLower = (error.message || '').toLowerCase();
+          if (errorMsgLower.includes('microphone') || errorMsgLower.includes('audio')) {
+            errorMessage = 'Microphone permission denied. Please allow microphone access and try again.';
+          } else if (errorMsgLower.includes('camera') || errorMsgLower.includes('video')) {
+            errorMessage = 'Camera permission denied. Please allow camera access and try again.';
+          } else {
+            errorMessage = 'Camera or microphone permission denied. Please allow access and try again.';
+          }
         } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
           // NotReadableError can mean either "in use" or "not found"
           // Check if we have video devices available

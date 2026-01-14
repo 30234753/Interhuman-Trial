@@ -131,7 +131,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           signals: signals,
         }),
       }).catch((error) => {
-        console.error('Error updating session signals:', error);
+        // Silently handle errors - session updates are non-critical
+        // The client-side state is the source of truth
+        // Errors can occur during hot reloads when server state is lost
       });
 
       return {

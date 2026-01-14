@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import VideoCapture, { VideoCaptureProps } from './VideoCapture';
 import FeedbackOverlay from './FeedbackOverlay';
+import Subtitles from './Subtitles';
 import { BehavioralSignal } from '@/app/lib/types';
 import { SignalAggregator } from '@/app/lib/signal-aggregator';
 
@@ -29,9 +30,12 @@ export default function VideoPlayer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSignals, setCurrentSignals] = useState<BehavioralSignal[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentStream, setCurrentStream] = useState<MediaStream | null>(null);
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isStreamActiveRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
   
   // Signal aggregator for tracking signals over time window (15 seconds)
   const signalAggregator = useMemo(() => {
@@ -47,21 +51,113 @@ export default function VideoPlayer({
   }, []);
 
   /**
-   * Captures a frame from the video stream and sends it for analysis
+   * Detects the best supported MIME type for MediaRecorder
+   * Prioritizes formats with audio codec support, falls back to video-only
+   * Handles browser compatibility and codec detection
+   */
+  const getSupportedMimeType = useCallback((): string | null => {
+    // Check if MediaRecorder is available
+    if (typeof MediaRecorder === 'undefined') {
+      console.error('MediaRecorder is not supported in this browser');
+      return null;
+    }
+
+    // Priority list: formats with audio codecs first, then video-only
+    // Order matters - we prefer WebM with Opus audio (most widely supported)
+    const preferredTypes = [
+      // WebM with audio (best quality, widely supported)
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,vorbis', // Alternative audio codec
+      'video/webm;codecs=vp9,vorbis',
+      // WebM video-only (fallback if audio codec not supported)
+      'video/webm;codecs=vp8',
+      'video/webm;codecs=vp9',
+      'video/webm', // Generic WebM (browser will choose codec)
+      // MP4 formats (less browser support, but common)
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2', // H.264 + AAC
+      'video/mp4;codecs=avc1.42E01E', // H.264 video-only
+      'video/mp4', // Generic MP4
+      // Other formats as fallback
+      'video/ogg;codecs=theora,vorbis',
+      'video/ogg;codecs=theora',
+      'video/ogg',
+    ];
+
+    // Test each type in priority order
+    for (const type of preferredTypes) {
+      try {
+        if (MediaRecorder.isTypeSupported(type)) {
+          console.log(`Using MediaRecorder MIME type: ${type}`);
+          return type;
+        }
+      } catch (error) {
+        // Some browsers may throw errors on isTypeSupported for certain formats
+        // Continue to next type
+        console.debug(`MediaRecorder.isTypeSupported failed for ${type}:`, error);
+      }
+    }
+
+    // If no specific type is supported, try to get default type
+    // Some browsers support MediaRecorder but don't report specific codecs
+    try {
+      const defaultRecorder = new MediaRecorder(new MediaStream());
+      if (defaultRecorder.mimeType) {
+        console.warn(`No preferred codec found, using browser default: ${defaultRecorder.mimeType}`);
+        return defaultRecorder.mimeType;
+      }
+    } catch (error) {
+      // Can't create MediaRecorder without a stream, that's expected
+    }
+
+    console.error('No supported MediaRecorder MIME type found');
+    return null;
+  }, []);
+
+  /**
+   * Records a video segment from the stream and sends it for analysis
    */
   const captureAndAnalyze = useCallback(async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+    // #endregion
+    
     // Check if stream is still active before starting analysis
     if (!isStreamActiveRef.current) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:121',message:'Early return: stream not active',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
     const video = getVideoElement();
     if (!video || !enabled || isAnalyzing) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:127',message:'Early return: video/enabled/isAnalyzing check',data:{hasVideo:!!video,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
       return;
     }
     
     // Check if video is ready and playing
     if (video.readyState < 2 || video.paused || video.ended) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:130',message:'Early return: video not ready',data:{readyState:video.readyState,paused:video.paused,ended:video.ended},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+
+    // Check if MediaRecorder is supported
+    if (typeof MediaRecorder === 'undefined' || !window.MediaRecorder) {
+      console.error('MediaRecorder is not supported in this browser. Please use a modern browser like Chrome, Firefox, Edge, or Safari 14.3+');
+      return;
+    }
+
+    // Get the MediaStream from the video element
+    const stream = video.srcObject as MediaStream;
+    if (!stream || !stream.active) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:141',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
@@ -77,28 +173,225 @@ export default function VideoPlayer({
     abortControllerRef.current = abortController;
 
     try {
-      // Create a canvas to capture the current frame
-      const canvas = canvasRef.current || document.createElement('canvas');
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Failed to get canvas context');
+      // Detect supported MIME type with fallback logic
+      const mimeType = getSupportedMimeType();
+      if (!mimeType) {
+        throw new Error('No supported video codec found. Your browser may not support video recording.');
       }
 
-      // Draw the current video frame to the canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Check if audio tracks are available
+      const audioTracks = stream.getAudioTracks();
+      const hasAudio = audioTracks.length > 0 && audioTracks[0].enabled;
+      
+      // Check if the selected MIME type supports audio
+      const mimeTypeSupportsAudio = mimeType.includes('opus') || 
+                                    mimeType.includes('vorbis') || 
+                                    mimeType.includes('aac') ||
+                                    mimeType.includes('mp4a');
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:164',message:'Audio track detection',data:{audioTrackCount:audioTracks.length,hasAudio,audioTracksEnabled:audioTracks.map(t=>({id:t.id,enabled:t.enabled,kind:t.kind,label:t.label,readyState:t.readyState})),mimeType,mimeTypeSupportsAudio,streamActive:stream.active,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      // Log information about recording capabilities
+      if (hasAudio && mimeTypeSupportsAudio) {
+        console.log('Recording with audio support');
+      } else if (hasAudio && !mimeTypeSupportsAudio) {
+        console.warn('Audio tracks available but selected codec does not support audio, recording video-only');
+      } else if (!hasAudio) {
+        console.warn('No audio tracks available, recording video-only');
+      }
 
-      // Convert canvas to base64
-      const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+      // Record duration: 2-3 seconds (use analysisInterval as base, but cap at 3 seconds)
+      const recordDuration = Math.min(Math.max(analysisInterval, 2000), 3000);
+
+      // Create MediaRecorder with error handling
+      let mediaRecorder: MediaRecorder;
+      try {
+        // Try to create with preferred settings
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType,
+          videoBitsPerSecond: 2500000, // 2.5 Mbps for good quality
+        });
+      } catch (error) {
+        // Fallback: try without explicit MIME type (let browser choose)
+        console.warn('Failed to create MediaRecorder with specified MIME type, trying browser default:', error);
+        try {
+          mediaRecorder = new MediaRecorder(stream, {
+            videoBitsPerSecond: 2500000,
+          });
+          console.log(`Using browser default MIME type: ${mediaRecorder.mimeType}`);
+        } catch (fallbackError) {
+          // Last resort: try with minimal options
+          console.warn('Failed to create MediaRecorder with quality settings, trying minimal options:', fallbackError);
+          mediaRecorder = new MediaRecorder(stream);
+          console.log(`Using minimal MediaRecorder options, MIME type: ${mediaRecorder.mimeType}`);
+        }
+      }
+
+      mediaRecorderRef.current = mediaRecorder;
+      recordedChunksRef.current = [];
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:210',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+
+      // Collect recorded chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:217',message:'Chunk recorded',data:{chunkSize:event.data.size,chunkType:event.data.type,totalChunks:recordedChunksRef.current.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+        }
+      };
+
+      // Start recording
+      mediaRecorder.start();
+
+      // Wait for the recording duration
+      await new Promise<void>((resolve, reject) => {
+        let timeout: NodeJS.Timeout | null = null;
+        let checkInterval: NodeJS.Timeout | null = null;
+        let isResolved = false;
+
+        const cleanup = () => {
+          if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+          }
+          if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+          }
+        };
+
+        const resolveOnce = () => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            resolve();
+          }
+        };
+
+        const rejectOnce = (error: Error) => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanup();
+            reject(error);
+          }
+        };
+
+        timeout = setTimeout(() => {
+          if (mediaRecorder.state === 'recording') {
+            // Request final data before stopping to ensure we get all chunks
+            try {
+              mediaRecorder.requestData();
+            } catch (e) {
+              // Some browsers may not support requestData, that's okay
+            }
+            mediaRecorder.stop();
+          }
+          // Don't resolve immediately - wait for onstop and data to arrive
+        }, recordDuration);
+
+        mediaRecorder.onstop = () => {
+          // Add a delay to ensure all dataavailable events have fired
+          // This handles the async nature of ondataavailable
+          // Use a longer delay and check if we have chunks before resolving
+          setTimeout(() => {
+            // If we still don't have chunks after delay, wait a bit more
+            if (recordedChunksRef.current.length === 0) {
+              setTimeout(() => {
+                resolveOnce();
+              }, 200);
+            } else {
+              resolveOnce();
+            }
+          }, 150);
+        };
+
+        mediaRecorder.onerror = (event) => {
+          rejectOnce(new Error('MediaRecorder error'));
+        };
+
+        // Check if stream is still active during recording
+        checkInterval = setInterval(() => {
+          if (!isStreamActiveRef.current) {
+            if (mediaRecorder.state === 'recording') {
+              try {
+                mediaRecorder.requestData();
+              } catch (e) {
+                // Ignore if requestData fails
+              }
+              mediaRecorder.stop();
+            }
+            // Don't reject immediately - let onstop fire first to collect any final chunks
+            setTimeout(() => {
+              if (recordedChunksRef.current.length === 0) {
+                rejectOnce(new Error('Stream stopped'));
+              } else {
+                // We have chunks, resolve instead of reject
+                resolveOnce();
+              }
+            }, 150);
+          }
+        }, 100);
+      });
+
+      // Check again if stream is still active after recording
+      if (!isStreamActiveRef.current) {
+        return;
+      }
+
+      // Combine recorded chunks into a single blob
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:314',message:'About to create blob',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),mediaRecorderState:mediaRecorder.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+      // #endregion
+      
+      // If no chunks yet, wait a bit more (shouldn't happen with the improved onstop handler, but just in case)
+      if (recordedChunksRef.current.length === 0) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      const videoBlob = new Blob(recordedChunksRef.current, { type: mimeType });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:325',message:'Video blob created',data:{blobSize:videoBlob.size,blobType:videoBlob.type,chunksCount:recordedChunksRef.current.length,hasAudioCodec:mimeType.includes('opus')||mimeType.includes('vorbis')||mimeType.includes('aac')||mimeType.includes('mp4a'),originalMimeType:mimeType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      
+      // Validate blob size (should be > 0)
+      if (videoBlob.size === 0) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:337',message:'Empty blob detected',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),waited:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
+        // #endregion
+        throw new Error('Recorded video blob is empty');
+      }
+
+      // Convert blob to base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:300',message:'Base64 conversion complete',data:{dataUrlPrefix:reader.result.substring(0,Math.min(50,reader.result.length)),base64Length:reader.result.length,detectedMimeType:reader.result.match(/^data:([^;,]+)/)?.[1]||'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            resolve(reader.result);
+          } else {
+            reject(new Error('Failed to convert blob to base64'));
+          }
+        };
+        reader.onerror = () => reject(new Error('FileReader error'));
+        reader.readAsDataURL(videoBlob);
+      });
 
       // Check again if stream is still active before making request
       if (!isStreamActiveRef.current) {
         return;
       }
 
-      // Send frame for analysis with abort signal
+      // Send video segment for analysis with abort signal
+      const apiRequestStart = Date.now();
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -113,6 +406,11 @@ export default function VideoPlayer({
         }),
         signal: abortController.signal,
       });
+      const apiRequestDuration = Date.now() - apiRequestStart;
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:360',message:'API request timing',data:{durationMs:apiRequestDuration,status:response.status,blobSize:videoBlob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'P'})}).catch(()=>{});
+      // #endregion
 
       // Check if stream is still active after fetch completes
       if (!isStreamActiveRef.current) {
@@ -126,6 +424,10 @@ export default function VideoPlayer({
       }
 
       const data = await response.json();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:272',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       
       // Final check before updating signals
       if (!isStreamActiveRef.current) {
@@ -165,24 +467,42 @@ export default function VideoPlayer({
     } catch (error) {
       // Ignore abort errors (expected when stream stops)
       if (error instanceof Error && error.name === 'AbortError') {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:418',message:'Analysis aborted (expected)',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+        // #endregion
         return;
       }
-      console.error('Error during frame analysis:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:421',message:'Error during analysis',data:{errorName:error instanceof Error?error.name:'unknown',errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+      console.error('Error during video segment analysis:', error);
     } finally {
+      // Clean up MediaRecorder
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current = null;
+      }
+      recordedChunksRef.current = [];
+
       // Only clear analyzing state if stream is still active
       if (isStreamActiveRef.current) {
         setIsAnalyzing(false);
       }
       abortControllerRef.current = null;
     }
-  }, [enabled, isAnalyzing, onSignalsUpdate, getVideoElement]);
+  }, [enabled, isAnalyzing, onSignalsUpdate, getVideoElement, getSupportedMimeType, analysisInterval]);
 
   /**
    * Handles stream ready event and starts analysis loop
+   * Uses a sequential approach: waits for each analysis to complete before starting the next
    */
   const handleStreamReady = useCallback((stream: MediaStream) => {
-    // Mark stream as active
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+    // #endregion
+    
+    // Mark stream as active and store stream reference for subtitles
     isStreamActiveRef.current = true;
+    setCurrentStream(stream);
 
     // Start periodic analysis if enabled
     if (enabled && analysisInterval > 0) {
@@ -191,10 +511,34 @@ export default function VideoPlayer({
         clearInterval(analysisIntervalRef.current);
       }
 
-      // Start new analysis interval
-      analysisIntervalRef.current = setInterval(() => {
-        captureAndAnalyze();
-      }, analysisInterval);
+      // Sequential analysis: start first one immediately, then schedule next after completion
+      const runAnalysis = async () => {
+        if (!isStreamActiveRef.current) {
+          return;
+        }
+        
+        try {
+          await captureAndAnalyze();
+        } catch (error) {
+          // Errors are already logged in captureAndAnalyze
+        }
+        
+        // Schedule next analysis after the interval, but only if stream is still active
+        if (isStreamActiveRef.current && enabled) {
+          analysisIntervalRef.current = setTimeout(runAnalysis, analysisInterval) as any;
+        }
+      };
+      
+      // Start first analysis
+      runAnalysis();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+      // #endregion
+    } else {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+      // #endregion
     }
 
     onStreamReady?.(stream);
@@ -204,14 +548,29 @@ export default function VideoPlayer({
    * Handles stream stop and cleans up analysis interval
    */
   const handleStreamStop = useCallback(() => {
-    // Mark stream as inactive
+    // Mark stream as inactive and clear stream reference
     isStreamActiveRef.current = false;
+    setCurrentStream(null);
 
-    // Clear analysis interval
+    // Clear analysis interval (works for both setInterval and setTimeout)
     if (analysisIntervalRef.current) {
       clearInterval(analysisIntervalRef.current);
+      clearTimeout(analysisIntervalRef.current as any);
       analysisIntervalRef.current = null;
     }
+
+    // Stop any active MediaRecorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+      } catch (error) {
+        console.warn('Error stopping MediaRecorder:', error);
+      }
+      mediaRecorderRef.current = null;
+    }
+    recordedChunksRef.current = [];
 
     // Abort any in-flight analysis requests
     if (abortControllerRef.current) {
@@ -230,35 +589,33 @@ export default function VideoPlayer({
     onSignalsUpdate?.([]);
 
     videoCaptureProps.onStreamStop?.();
-  }, [videoCaptureProps, onSignalsUpdate]);
+  }, [videoCaptureProps, onSignalsUpdate, signalAggregator]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (analysisIntervalRef.current) {
         clearInterval(analysisIntervalRef.current);
+        clearTimeout(analysisIntervalRef.current as any);
       }
     };
   }, []);
 
   // Update analysis when enabled state changes
+  // Only disable analysis if enabled becomes false - don't restart if already running
+  // The handleStreamReady callback already sets up the interval correctly
   useEffect(() => {
     if (!enabled && analysisIntervalRef.current) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
       clearInterval(analysisIntervalRef.current);
       analysisIntervalRef.current = null;
-    } else if (enabled && analysisInterval > 0) {
-      const video = getVideoElement();
-      if (video?.srcObject) {
-        // Restart analysis if enabled and video is ready
-        if (analysisIntervalRef.current) {
-          clearInterval(analysisIntervalRef.current);
-        }
-        analysisIntervalRef.current = setInterval(() => {
-          captureAndAnalyze();
-        }, analysisInterval);
-      }
     }
-  }, [enabled, analysisInterval, captureAndAnalyze, getVideoElement]);
+    // Note: We don't restart the interval here if enabled becomes true
+    // because handleStreamReady already handles that when the stream starts
+    // This prevents the interval from being constantly reset
+  }, [enabled]);
 
   return (
     <div ref={containerRef} className={`relative w-full h-full ${className}`}>
@@ -279,6 +636,13 @@ export default function VideoPlayer({
         showLabels={true}
         showValues={true}
         compact={false}
+      />
+
+      {/* Subtitles overlay */}
+      <Subtitles
+        enabled={enabled && isStreamActiveRef.current}
+        stream={currentStream}
+        className={currentSignals.length > 0 ? "pb-20" : "pb-4"}
       />
 
       {/* Analysis status indicator */}

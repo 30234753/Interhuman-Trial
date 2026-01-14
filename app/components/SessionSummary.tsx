@@ -166,7 +166,12 @@ export default function SessionSummary({
   className = '',
 }: SessionSummaryProps) {
   const [stats, setStats] = useState<SessionStatistics | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const hasData = signals.length > 0 && startTime !== null;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (hasData) {
@@ -192,7 +197,13 @@ export default function SessionSummary({
             )}
           </h2>
           <p className="text-gray-400 text-xs mt-0.5">
-            {startTime ? new Date(startTime).toLocaleTimeString() : 'Not started'} - {hasData && isLive ? 'In progress...' : (startTime ? new Date(endTime).toLocaleTimeString() : 'N/A')}
+            {isMounted ? (
+              <>
+                {startTime ? new Date(startTime).toLocaleTimeString() : 'Not started'} - {hasData && isLive ? 'In progress...' : (startTime ? new Date(endTime).toLocaleTimeString() : 'N/A')}
+              </>
+            ) : (
+              'Loading...'
+            )}
           </p>
         </div>
         {onClose && (

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SessionData } from '@/app/lib/types';
 
+export const runtime = 'nodejs';
+
 // In-memory session storage (in production, use a database)
 const sessions = new Map<string, SessionData>();
 
@@ -41,12 +43,17 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const session = sessions.get(sessionId);
+        let session = sessions.get(sessionId);
         if (!session) {
-          return NextResponse.json(
-            { success: false, error: 'Session not found' },
-            { status: 404 }
-          );
+          // Session not found - this can happen in development mode due to hot reloading
+          // Since session updates are non-critical (client state is source of truth),
+          // create the session if it doesn't exist (upsert behavior)
+          session = {
+            id: sessionId,
+            startTime: Date.now(),
+            signals: [],
+          };
+          sessions.set(sessionId, session);
         }
 
         // Update session with new signals if provided
