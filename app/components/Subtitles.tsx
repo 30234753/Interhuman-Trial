@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { SpeechRecognitionWrapper } from '@/app/lib/speech-recognition-wrapper';
 
 export interface SubtitlesProps {
   enabled?: boolean;
@@ -9,8 +10,8 @@ export interface SubtitlesProps {
 }
 
 /**
- * Real-time subtitles component using Web Speech API
- * Displays transcribed speech from the microphone stream
+ * Real-time subtitles component using Speech Recognition Wrapper
+ * Uses Web Speech API for Chrome/Safari, Vosk for Edge fallback
  */
 export default function Subtitles({
   enabled = true,
@@ -20,200 +21,154 @@ export default function Subtitles({
   const [transcript, setTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const wrapperRef = useRef<SpeechRecognitionWrapper | null>(null);
+  const finalTranscriptRef = useRef<string>('');
   const interimTranscriptRef = useRef<string>('');
 
-  // Initialize Speech Recognition
+  // Initialize Speech Recognition Wrapper
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:27',message:'Effect running - initializing recognition',data:{enabled,hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
-    // Check if Speech Recognition API is available
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      setError('Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
-      return;
+    if (!wrapperRef.current) {
+      wrapperRef.current = new SpeechRecognitionWrapper({
+        continuous: true,
+        interimResults: true,
+        lang: 'en-US',
+      });
     }
 
-    // Create recognition instance
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Keep listening continuously
-    recognition.interimResults = true; // Show interim results
-    recognition.lang = 'en-US'; // Set language to English
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:38',message:'Recognition instance created',data:{hasExistingInstance:!!recognitionRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
-    recognition.onstart = () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:42',message:'Recognition started',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      setIsListening(true);
-      setError(null);
-    };
-
-    recognition.onresult = (event: any) => {
-      // #region agent log
-      const allResults = [];
-      for (let i = 0; i < event.results.length; i++) {
-        allResults.push({
-          index: i,
-          transcript: event.results[i][0].transcript,
-          isFinal: event.results[i].isFinal,
-          confidence: event.results[i][0].confidence
-        });
-      }
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:47',message:'onresult fired',data:{resultIndex:event.resultIndex,totalResults:event.results.length,allResults,currentTranscript:transcript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
-      // Build complete transcript from ALL final results (rebuild from scratch to avoid duplicates)
-      // This ensures we never duplicate - we always rebuild the complete state
-      let completeFinalTranscript = '';
-      let latestInterimTranscript = '';
-
-      // Process ALL results to rebuild complete state
-      // This approach avoids duplication because we rebuild from scratch each time
-      for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          // Add all final results to build complete final transcript
-          completeFinalTranscript += result + ' ';
-        } else {
-          // Track the latest interim result (the last non-final result in the array)
-          // This is what's currently being spoken/recognized
-          latestInterimTranscript = result;
-        }
-      }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:59',message:'Processed results',data:{completeFinalTranscript,latestInterimTranscript,hasFinal:!!completeFinalTranscript,hasInterim:!!latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
-      // Update interim transcript ref with latest interim only
-      interimTranscriptRef.current = latestInterimTranscript;
-
-      // Always rebuild the transcript from all final results (prevents duplication)
-      // Display: complete final transcript + latest interim
-      setTranscript(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:66',message:'Rebuilding transcript from all final results',data:{completeFinalTranscript,latestInterimTranscript,display:completeFinalTranscript + latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        // Rebuild from scratch: all final results + latest interim
-        const display = completeFinalTranscript + latestInterimTranscript;
-        // Limit to last 200 characters to prevent overflow
-        return display.slice(-200);
-      });
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      
-      let errorMessage = 'Speech recognition error';
-      switch (event.error) {
-        case 'no-speech':
-          // Don't show error for no-speech, it's normal when user is silent
-          return;
-        case 'audio-capture':
-          errorMessage = 'No microphone found or microphone access denied';
-          break;
-        case 'not-allowed':
-          errorMessage = 'Microphone permission denied';
-          break;
-        case 'network':
-          errorMessage = 'Network error with speech recognition service';
-          break;
-        case 'service-not-allowed':
-          errorMessage = 'Speech recognition service not allowed';
-          break;
-        default:
-          errorMessage = `Speech recognition error: ${event.error}`;
-      }
-      
-      setError(errorMessage);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      
-      // Auto-restart if enabled and stream is still active
-      if (enabled && stream && stream.active) {
-        try {
-          recognition.start();
-        } catch (e) {
-          // Recognition might already be starting, ignore
-          console.debug('Recognition restart:', e);
-        }
-      }
-    };
-
-    recognitionRef.current = recognition;
+    const wrapper = wrapperRef.current;
 
     // Start recognition if enabled and stream is available
-    if (enabled && stream && stream.active) {
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:127',message:'Starting recognition on init',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognition.start();
-      } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:130',message:'Failed to start recognition',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        console.error('Failed to start speech recognition:', e);
+    if (enabled && stream && stream.active && wrapper.isReady()) {
+      const audioTracks = stream.getAudioTracks() || [];
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+      const isEdge = userAgent.includes('Edg/');
+
+      // For Edge, wait for audio tracks to be ready
+      const startRecognition = () => {
+        wrapper.start(stream, {
+          onResult: (text: string, isFinal: boolean) => {
+            if (isFinal) {
+              // Add to final transcript (text is already just the new part)
+              finalTranscriptRef.current += text + ' ';
+              // Clear interim transcript when text becomes final to prevent duplication
+              interimTranscriptRef.current = '';
+              // Rebuild display transcript
+              const display = finalTranscriptRef.current.trim() + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
+              setTranscript(display.slice(-200)); // Limit to last 200 chars
+            } else {
+              // Update interim transcript
+              interimTranscriptRef.current = text;
+              // Rebuild display transcript
+              const display = finalTranscriptRef.current.trim() + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
+              setTranscript(display.slice(-200));
+            }
+          },
+          onError: (errorMsg: string) => {
+            // Don't show "no-speech" errors - they're normal
+            if (errorMsg !== 'no-speech') {
+              setError(errorMsg);
+            }
+            setIsListening(false);
+          },
+          onStart: () => {
+            setIsListening(true);
+            setError(null);
+          },
+          onEnd: () => {
+            setIsListening(false);
+            // Clear interim transcript when recognition ends
+            interimTranscriptRef.current = '';
+          },
+        });
+      };
+
+      if (isEdge && audioTracks.length > 0) {
+        // Wait for audio tracks to be in 'live' state before starting
+        const checkAndStart = () => {
+          const liveTracks = audioTracks.filter(t => t.readyState === 'live' && t.enabled && !t.muted);
+          if (liveTracks.length > 0) {
+            // Add delay for Edge
+            setTimeout(startRecognition, 500);
+          } else {
+            setTimeout(checkAndStart, 100);
+          }
+        };
+        setTimeout(checkAndStart, 500);
+      } else {
+        startRecognition();
       }
     }
 
     // Cleanup on unmount
     return () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:134',message:'Cleanup - stopping recognition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-        recognitionRef.current = null;
+      if (wrapper) {
+        wrapper.stop();
       }
     };
   }, [enabled, stream]);
 
   // Handle stream changes
   useEffect(() => {
-    if (!recognitionRef.current) return;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:147',message:'Stream change effect',data:{enabled,hasStream:!!stream,streamActive:stream?.active,isListening},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    const wrapper = wrapperRef.current;
+    if (!wrapper || !wrapper.isReady()) return;
 
     if (enabled && stream && stream.active && !isListening) {
       // Start recognition when stream becomes active
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:152',message:'Starting recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognitionRef.current.start();
-      } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:155',message:'Failed to start from stream change',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        console.debug('Recognition start:', e);
+      const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown';
+      const isEdge = userAgent.includes('Edg/');
+      const audioTracks = stream.getAudioTracks() || [];
+
+      const startRecognition = () => {
+        wrapper.start(stream, {
+          onResult: (text: string, isFinal: boolean) => {
+            if (isFinal) {
+              finalTranscriptRef.current += text + ' ';
+              // Clear interim transcript when text becomes final to prevent duplication
+              interimTranscriptRef.current = '';
+              const display = finalTranscriptRef.current.trim() + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
+              setTranscript(display.slice(-200));
+            } else {
+              interimTranscriptRef.current = text;
+              const display = finalTranscriptRef.current.trim() + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
+              setTranscript(display.slice(-200));
+            }
+          },
+          onError: (errorMsg: string) => {
+            if (errorMsg !== 'no-speech') {
+              setError(errorMsg);
+            }
+            setIsListening(false);
+          },
+          onStart: () => {
+            setIsListening(true);
+            setError(null);
+          },
+          onEnd: () => {
+            setIsListening(false);
+            interimTranscriptRef.current = '';
+          },
+        });
+      };
+
+      if (isEdge && audioTracks.length > 0) {
+        const liveTracks = audioTracks.filter(t => t.readyState === 'live' && t.enabled && !t.muted);
+        if (liveTracks.length > 0) {
+          setTimeout(startRecognition, 100);
+        } else {
+          setTimeout(() => {
+            const retryTracks = stream?.getAudioTracks() || [];
+            const retryLive = retryTracks.filter(t => t.readyState === 'live' && t.enabled && !t.muted);
+            if (retryLive.length > 0) {
+              startRecognition();
+            }
+          }, 200);
+        }
+      } else {
+        startRecognition();
       }
     } else if ((!enabled || !stream || !stream.active) && isListening) {
       // Stop recognition when stream stops or is disabled
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:161',message:'Stopping recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.debug('Recognition stop:', e);
-      }
+      wrapper.stop();
     }
   }, [enabled, stream, isListening]);
 
@@ -221,6 +176,7 @@ export default function Subtitles({
   useEffect(() => {
     if (!stream || !stream.active) {
       setTranscript('');
+      finalTranscriptRef.current = '';
       interimTranscriptRef.current = '';
     }
   }, [stream]);
@@ -228,6 +184,7 @@ export default function Subtitles({
   // Clear transcript manually
   const clearTranscript = useCallback(() => {
     setTranscript('');
+    finalTranscriptRef.current = '';
     interimTranscriptRef.current = '';
   }, []);
 
@@ -319,4 +276,3 @@ export default function Subtitles({
     </div>
   );
 }
-

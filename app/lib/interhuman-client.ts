@@ -158,30 +158,31 @@ export class InterhumanAPIClient {
         // Handles formats like:
         // - "data:video/mp4;base64,"
         // - "data:video/webm;codecs=vp8,opus;base64,"
+        // - "data:audio/webm;codecs=opus;base64," (for audio-only)
         // - "data:video/webm;base64,"
         if (request.videoData.startsWith('data:')) {
           // Extract MIME type, handling codecs and parameters
           // Pattern matches: data:video/webm;codecs=vp8,opus;base64,
-          // We extract just the base MIME type (video/webm) for file extension
+          // We extract just the base MIME type (video/webm or audio/webm) for file extension
           const mimeMatch = request.videoData.match(/data:([^;,]+)/);
           if (mimeMatch && mimeMatch[1]) {
             const detectedMime = mimeMatch[1].trim();
-            // Only use if it's a valid video MIME type
-            if (detectedMime.startsWith('video/')) {
+            // Accept both video and audio MIME types (Interhuman AI supports both)
+            if (detectedMime.startsWith('video/') || detectedMime.startsWith('audio/')) {
               mimeType = detectedMime;
             }
           }
           // #region agent log
           const fullMimeMatch = request.videoData.match(/data:([^;]+)/);
-          const logEntry = JSON.stringify({location:'interhuman-client.ts:160',message:'MIME type detection',data:{detectedMimeType:mimeType,fullMimeString:fullMimeMatch?.[1]||'none',hasAudioCodec:request.videoData.includes('opus')||request.videoData.includes('vorbis')||request.videoData.includes('aac')||request.videoData.includes('mp4a'),binaryDataSize:binaryData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})+'\n';
+          const logEntry = JSON.stringify({location:'interhuman-client.ts:160',message:'MIME type detection',data:{detectedMimeType:mimeType,fullMimeString:fullMimeMatch?.[1]||'none',hasAudioCodec:request.videoData.includes('opus')||request.videoData.includes('vorbis')||request.videoData.includes('aac')||request.videoData.includes('mp4a'),isAudio:request.videoData.startsWith('data:audio/'),binaryDataSize:binaryData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H'})+'\n';
           try { fs.appendFileSync(logPath, logEntry); } catch(e) {}
           // #endregion
         }
         
-        // Validate MIME type is a video format
-        if (!mimeType.startsWith('video/')) {
-          // Default to video/mp4 if not a video MIME type
-          console.warn(`Invalid or missing video MIME type, defaulting to video/mp4. Received: ${mimeType}`);
+        // Validate MIME type is a video or audio format (Interhuman AI supports both)
+        if (!mimeType.startsWith('video/') && !mimeType.startsWith('audio/')) {
+          // Default to video/mp4 if not a recognized format
+          console.warn(`Invalid or missing media MIME type, defaulting to video/mp4. Received: ${mimeType}`);
           mimeType = 'video/mp4';
         }
         
@@ -202,11 +203,11 @@ export class InterhumanAPIClient {
       }
 
       // Determine file extension based on MIME type
-      // Maps common video MIME types to their file extensions
+      // Maps common video and audio MIME types to their file extensions
       const getFileExtension = (mime: string): string => {
         const mimeLower = mime.toLowerCase();
         
-        // WebM formats
+        // WebM formats (both video and audio)
         if (mimeLower.includes('webm')) {
           return 'webm';
         }
@@ -214,7 +215,7 @@ export class InterhumanAPIClient {
         if (mimeLower.includes('mp4') || mimeLower.includes('mpeg4')) {
           return 'mp4';
         }
-        // OGG formats
+        // OGG formats (both video and audio)
         if (mimeLower.includes('ogg') || mimeLower.includes('ogv')) {
           return 'ogg';
         }
@@ -238,14 +239,30 @@ export class InterhumanAPIClient {
         if (mimeLower.includes('flv') || mimeLower.includes('x-flv')) {
           return 'flv';
         }
+        // WAV format (audio)
+        if (mimeLower.includes('wav') || mimeLower.includes('wave')) {
+          return 'wav';
+        }
+        // MPEG audio formats
+        if (mimeLower.includes('mpeg') && mimeLower.includes('audio')) {
+          return 'mp3';
+        }
         
-        // Default to mp4 for unknown video formats (most widely supported)
-        console.warn(`Unknown video MIME type: ${mime}, defaulting to .mp4 extension`);
+        // Default to mp4 for unknown formats (most widely supported)
+        console.warn(`Unknown media MIME type: ${mime}, defaulting to .mp4 extension`);
         return 'mp4';
       };
 
       const fileExtension = getFileExtension(mimeType);
-      const fileName = `video.${fileExtension}`;
+      // Use appropriate filename prefix based on MIME type
+      const fileName = mimeType.startsWith('audio/') 
+        ? `audio.${fileExtension}` 
+        : `video.${fileExtension}`;
+
+      // #region agent log
+      const logEntry2 = JSON.stringify({location:'interhuman-client.ts:250',message:'File upload preparation',data:{fileName,mimeType,blobSize:videoBlob.size,blobType:videoBlob.type,isAudio:mimeType.startsWith('audio/')},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'I'})+'\n';
+      try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
+      // #endregion
 
       // Create FormData
       const formData = new FormData();
@@ -264,6 +281,11 @@ export class InterhumanAPIClient {
         }
       }
 
+      // #region agent log
+      const logEntry3 = JSON.stringify({location:'interhuman-client.ts:284',message:'Sending API request',data:{url,fileName,mimeType,blobSize:videoBlob.size,hasFormData:!!formData,formDataKeys:Array.from(formData.keys())},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H3'})+'\n';
+      try { fs.appendFileSync(logPath, logEntry3); } catch(e) {}
+      // #endregion
+      
       let response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -272,6 +294,11 @@ export class InterhumanAPIClient {
         },
         body: formData,
       });
+      
+      // #region agent log
+      const logEntry4 = JSON.stringify({location:'interhuman-client.ts:299',message:'API response status',data:{status:response.status,statusText:response.statusText,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H4'})+'\n';
+      try { fs.appendFileSync(logPath, logEntry4); } catch(e) {}
+      // #endregion
 
       // If we get a 401, the token might have expired, try refreshing once
       if (response.status === 401) {
@@ -313,6 +340,13 @@ export class InterhumanAPIClient {
 
       const data = await response.json();
 
+      // #region agent log
+      const fs = require('fs');
+      const logPath = 'f:\\Cursor\\Inhuman Trial\\.cursor\\debug.log';
+      const logEntry5 = JSON.stringify({location:'interhuman-client.ts:331',message:'Raw API response received',data:{hasData:!!data,dataKeys:data?Object.keys(data):[],signalsArray:Array.isArray(data?.signals)?data.signals.length:'not array',signalsType:typeof data?.signals,fullResponse:JSON.stringify(data).substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'J'})+'\n';
+      try { fs.appendFileSync(logPath, logEntry5); } catch(e) {}
+      // #endregion
+
       // Transform the API response to match our InterhumanAPIResponse interface
       return this.transformResponse(data, request.metadata);
     } catch (error) {
@@ -333,6 +367,13 @@ export class InterhumanAPIClient {
     rawResponse: any,
     metadata?: AnalyzeVideoRequest['metadata']
   ): InterhumanAPIResponse {
+    // #region agent log
+    const fs = require('fs');
+    const logPath = 'f:\\Cursor\\Inhuman Trial\\.cursor\\debug.log';
+    const logEntry6 = JSON.stringify({location:'interhuman-client.ts:356',message:'transformResponse called',data:{hasRawResponse:!!rawResponse,rawResponseKeys:rawResponse?Object.keys(rawResponse):[],hasSignalsArray:Array.isArray(rawResponse?.signals),signalsArrayLength:Array.isArray(rawResponse?.signals)?rawResponse.signals.length:0},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'K'})+'\n';
+    try { fs.appendFileSync(logPath, logEntry6); } catch(e) {}
+    // #endregion
+    
     // Handle different possible response formats from the API
     let signals: BehavioralSignal[] = [];
 

@@ -1,13 +1,17 @@
 'use client';
 
 import VideoPlayer from './components/VideoPlayer';
+import AudioPlayer from './components/AudioPlayer';
 import SessionControls from './components/SessionControls';
 import SessionSummary from './components/SessionSummary';
 import { useState, useEffect, useRef } from 'react';
 import { BehavioralSignal } from './lib/types';
 import { useSession } from './lib/session-context';
 
+type Mode = 'video+voice' | 'voice-only';
+
 export default function Home() {
+  const [mode, setMode] = useState<Mode>('video+voice');
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
@@ -103,6 +107,45 @@ export default function Home() {
           </p>
         </div>
         
+        {/* Mode Toggle */}
+        <div className="mb-4 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+          <div className="flex items-center justify-center gap-4">
+            <span className="text-gray-400 text-sm font-medium">Mode:</span>
+            <div className="flex gap-2 bg-gray-800/50 rounded-lg p-1 border border-gray-700/50">
+              <button
+                onClick={() => setMode('video+voice')}
+                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${
+                  mode === 'video+voice'
+                    ? 'bg-orange-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Video + Voice
+                </span>
+              </button>
+              <button
+                onClick={() => setMode('voice-only')}
+                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${
+                  mode === 'voice-only'
+                    ? 'bg-orange-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                  Voice Only
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Session Controls */}
         <div className="mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <SessionControls streamStatus={streamStatus} />
@@ -110,34 +153,68 @@ export default function Home() {
 
         {/* Video Player and Session Summary - Side by Side */}
         <div className="w-full grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          {/* Video Player Container - Main Focus */}
+          {/* Video/Audio Player Container - Main Focus */}
           <div className="w-full">
             <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-white/10 shadow-2xl">
-              <VideoPlayer
-                autoStart={false}
-                enabled={true}
-                analysisInterval={2000}
-                onStreamReady={(stream) => {
-                  console.log('Stream ready:', stream);
-                  setStreamStatus('Streaming active - Analysis enabled');
-                }}
-                onStreamError={(error) => {
-                  console.error('Stream error:', error);
-                  setStreamStatus(`Error: ${error.message}`);
-                }}
-                onStreamStop={() => {
-                  console.log('Stream stopped');
-                  setStreamStatus('Stream stopped');
-                }}
-                onSignalsUpdate={(signals) => {
-                  console.log('Signals updated:', signals);
-                  // Update session with signals if session is active
-                  if (sessionActive) {
-                    updateSignals(signals);
-                  }
-                }}
-                className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-600/50"
-              />
+              {mode === 'video+voice' ? (
+                <VideoPlayer
+                  autoStart={false}
+                  enabled={true}
+                  analysisInterval={2000}
+                  onStreamReady={(stream) => {
+                    console.log('Stream ready:', stream);
+                    setStreamStatus('Streaming active - Analysis enabled');
+                  }}
+                  onStreamError={(error) => {
+                    console.error('Stream error:', error);
+                    setStreamStatus(`Error: ${error.message}`);
+                  }}
+                  onStreamStop={() => {
+                    console.log('Stream stopped');
+                    setStreamStatus('Stream stopped');
+                  }}
+                  onSignalsUpdate={(signals) => {
+                    console.log('Signals updated:', signals);
+                    // Update session with signals if session is active
+                    if (sessionActive) {
+                      updateSignals(signals);
+                    }
+                  }}
+                  className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-600/50"
+                />
+              ) : (
+                <AudioPlayer
+                  autoStart={false}
+                  enabled={true}
+                  analysisInterval={2000}
+                  onStreamReady={(stream) => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:189',message:'Audio stream ready callback',data:{hasStream:!!stream,audioTracks:stream?.getAudioTracks().length||0,sessionActive},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
+                    console.log('Audio stream ready:', stream);
+                    setStreamStatus('Audio streaming active - Analysis enabled');
+                  }}
+                  onStreamError={(error) => {
+                    console.error('Audio stream error:', error);
+                    setStreamStatus(`Error: ${error.message}`);
+                  }}
+                  onStreamStop={() => {
+                    console.log('Audio stream stopped');
+                    setStreamStatus('Audio stream stopped');
+                  }}
+                  onSignalsUpdate={(signals) => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:201',message:'onSignalsUpdate called in voice-only mode',data:{signalsCount:signals?.length||0,signals:signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],sessionActive},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+                    // #endregion
+                    console.log('Signals updated (voice-only):', signals);
+                    // Update session with signals if session is active
+                    if (sessionActive) {
+                      updateSignals(signals);
+                    }
+                  }}
+                  className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-600/50"
+                />
+              )}
             </div>
           </div>
 
