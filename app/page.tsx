@@ -188,9 +188,7 @@ export default function Home() {
                   enabled={true}
                   analysisInterval={2000}
                   onStreamReady={(stream) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:189',message:'Audio stream ready callback',data:{hasStream:!!stream,audioTracks:stream?.getAudioTracks().length||0,sessionActive},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
+                    debugLog({location:'page.tsx:189',message:'Audio stream ready callback',data:{hasStream:!!stream,audioTracks:stream?.getAudioTracks().length||0,sessionActive},sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'});
                     console.log('Audio stream ready:', stream);
                     setStreamStatus('Audio streaming active - Analysis enabled');
                   }}
@@ -203,9 +201,7 @@ export default function Home() {
                     setStreamStatus('Audio stream stopped');
                   }}
                   onSignalsUpdate={(signals) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:201',message:'onSignalsUpdate called in voice-only mode',data:{signalsCount:signals?.length||0,signals:signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],sessionActive},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
+                    debugLog({location:'page.tsx:201',message:'onSignalsUpdate called in voice-only mode',data:{signalsCount:signals?.length||0,signals:signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],sessionActive},sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'});
                     console.log('Signals updated (voice-only):', signals);
                     // Update session with signals if session is active
                     if (sessionActive) {

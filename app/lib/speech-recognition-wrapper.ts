@@ -3,6 +3,8 @@
  * Uses Web Speech API for Chrome/Safari, Vosk for Edge fallback
  */
 
+import { debugLog } from './debug-logger';
+
 export interface SpeechRecognitionConfig {
   continuous?: boolean;
   interimResults?: boolean;
@@ -54,9 +56,7 @@ export class SpeechRecognitionWrapper {
     return new Promise((resolve, reject) => {
       // Check if already loaded
       if ((window as any).Vosk) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:52',message:'Vosk already loaded from CDN',data:{hasVosk:!!(window as any).Vosk},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:52',message:'Vosk already loaded from CDN',data:{hasVosk:!!(window as any).Vosk},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
         resolve((window as any).Vosk);
         return;
       }
@@ -87,9 +87,7 @@ export class SpeechRecognitionWrapper {
       let currentCdnIndex = 0;
 
       const tryLoadFromCDN = (cdnUrl: string) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:75',message:'Attempting to load Vosk from CDN',data:{cdnUrl,cdnIndex:currentCdnIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:75',message:'Attempting to load Vosk from CDN',data:{cdnUrl,cdnIndex:currentCdnIndex},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
 
         const script = document.createElement('script');
         script.src = cdnUrl;
@@ -98,9 +96,7 @@ export class SpeechRecognitionWrapper {
         script.crossOrigin = 'anonymous'; // Help with CORS and tracking prevention
 
         script.onload = () => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:85',message:'Vosk script loaded from CDN',data:{hasVosk:!!(window as any).Vosk,voskKeys:(window as any).Vosk ? Object.keys((window as any).Vosk) : [],cdnUrl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'speech-recognition-wrapper.ts:85',message:'Vosk script loaded from CDN',data:{hasVosk:!!(window as any).Vosk,voskKeys:(window as any).Vosk ? Object.keys((window as any).Vosk) : [],cdnUrl},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
           if ((window as any).Vosk) {
             resolve((window as any).Vosk);
           } else {
@@ -115,9 +111,7 @@ export class SpeechRecognitionWrapper {
         };
 
         script.onerror = () => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:95',message:'Vosk script load error, trying next CDN',data:{cdnUrl,failedCdnIndex:currentCdnIndex,remainingCdns:cdnUrls.length - currentCdnIndex - 1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'speech-recognition-wrapper.ts:95',message:'Vosk script load error, trying next CDN',data:{cdnUrl,failedCdnIndex:currentCdnIndex,remainingCdns:cdnUrls.length - currentCdnIndex - 1},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
           // Try next CDN
           if (currentCdnIndex < cdnUrls.length - 1) {
             currentCdnIndex++;
@@ -141,24 +135,18 @@ export class SpeechRecognitionWrapper {
         throw new Error('Vosk can only be initialized in the browser');
       }
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:95',message:'Attempting Vosk import from CDN',data:{isEdge:this.isEdge,userAgent:typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:95',message:'Attempting Vosk import from CDN',data:{isEdge:this.isEdge,userAgent:typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown'},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
       
       // Load Vosk from CDN to avoid Next.js build-time resolution issues
       const Vosk = await this.loadVoskFromCDN();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:100',message:'Vosk loaded from CDN',data:{hasVosk:!!Vosk,voskKeys:Vosk ? Object.keys(Vosk) : []},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:100',message:'Vosk loaded from CDN',data:{hasVosk:!!Vosk,voskKeys:Vosk ? Object.keys(Vosk) : []},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
       
       // Vosk-browser uses createModel API (confirmed from logs)
       const createModel = Vosk.createModel;
       
       if (!createModel) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:127',message:'createModel not found in Vosk',data:{voskKeys:Object.keys(Vosk)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:127',message:'createModel not found in Vosk',data:{voskKeys:Object.keys(Vosk)},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
         throw new Error('createModel not found in vosk-browser module');
       }
       
@@ -168,28 +156,20 @@ export class SpeechRecognitionWrapper {
       
       console.log('Initializing Vosk with model:', modelPath);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:166',message:'Creating Vosk model with tar.gz path',data:{modelPath,hasCreateModel:typeof createModel === 'function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:166',message:'Creating Vosk model with tar.gz path',data:{modelPath,hasCreateModel:typeof createModel === 'function'},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       
       // Create model - this returns a Model object
       // vosk-browser will download and extract the tar.gz file
       let voskModel;
       try {
         voskModel = await createModel(modelPath);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:175',message:'Model creation initiated',data:{modelPath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:175',message:'Model creation initiated',data:{modelPath},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       } catch (modelError: any) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:179',message:'Model creation failed',data:{error:modelError?.message,errorStack:modelError?.stack?.substring(0,300),modelPath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:179',message:'Model creation failed',data:{error:modelError?.message,errorStack:modelError?.stack?.substring(0,300),modelPath},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
         throw new Error(`Failed to load model from ${modelPath}: ${modelError?.message || 'Unknown error'}. Make sure the model.tar.gz file exists in public/models/`);
       }
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:170',message:'Vosk model created',data:{hasModel:!!voskModel,modelType:typeof voskModel,modelKeys:voskModel ? Object.keys(voskModel) : []},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:170',message:'Vosk model created',data:{hasModel:!!voskModel,modelType:typeof voskModel,modelKeys:voskModel ? Object.keys(voskModel) : []},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       
       // Vosk Model object has KaldiRecognizer constructor
       // Sample rate must match the audio context sample rate (typically 48000 Hz for modern browsers)
@@ -202,28 +182,20 @@ export class SpeechRecognitionWrapper {
       // Most modern browsers use 48000 Hz, but we'll detect it dynamically
       const defaultSampleRate = 48000; // Default to 48kHz for modern browsers
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:198',message:'Creating recognizer from model',data:{defaultSampleRate,hasKaldiRecognizer:!!voskModel.KaldiRecognizer,modelKeys:Object.keys(voskModel)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:198',message:'Creating recognizer from model',data:{defaultSampleRate,hasKaldiRecognizer:!!voskModel.KaldiRecognizer,modelKeys:Object.keys(voskModel)},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       
       // Store the model for later use - we'll create the recognizer in startVosk with correct sample rate
       this.voskModel = voskModel;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:212',message:'Recognizer created',data:{hasRecognizer:!!this.voskRecognizer,recognizerType:typeof this.voskRecognizer,hasAcceptWaveform:typeof this.voskRecognizer?.acceptWaveform === 'function',recognizerKeys:this.voskRecognizer ? Object.keys(this.voskRecognizer) : []},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:212',message:'Recognizer created',data:{hasRecognizer:!!this.voskRecognizer,recognizerType:typeof this.voskRecognizer,hasAcceptWaveform:typeof this.voskRecognizer?.acceptWaveform === 'function',recognizerKeys:this.voskRecognizer ? Object.keys(this.voskRecognizer) : []},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       
       console.log('Vosk recognizer initialized successfully');
       this.useVosk = true;
       this.isInitialized = true;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:123',message:'Vosk initialization complete',data:{hasRecognizer:!!this.voskRecognizer,useVosk:this.useVosk,isInitialized:this.isInitialized},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:123',message:'Vosk initialization complete',data:{hasRecognizer:!!this.voskRecognizer,useVosk:this.useVosk,isInitialized:this.isInitialized},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
     } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:127',message:'Vosk initialization error caught',data:{errorName:error?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,500),errorType:typeof error,errorString:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:127',message:'Vosk initialization error caught',data:{errorName:error?.name,errorMessage:error?.message,errorStack:error?.stack?.substring(0,500),errorType:typeof error,errorString:String(error)},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
       console.error('Vosk initialization error:', error);
       throw error; // Re-throw so caller can handle fallback
     }
@@ -248,9 +220,7 @@ export class SpeechRecognitionWrapper {
 
   async start(stream: MediaStream | null, callbacks: SpeechRecognitionCallbacks): Promise<void> {
     if (this.isStarting) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:100',message:'Recognition already starting, skipping',data:{isStarting:this.isStarting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T9'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:100',message:'Recognition already starting, skipping',data:{isStarting:this.isStarting},sessionId:'debug-session',runId:'run1',hypothesisId:'T9'});
       console.warn('Recognition already starting');
       return;
     }
@@ -303,16 +273,12 @@ export class SpeechRecognitionWrapper {
         this.isStarting = false;
         // Don't reset result tracking on start - only reset on stop
         // This prevents reprocessing old results when recognition restarts in continuous mode
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:140',message:'Recognition started',data:{lastProcessedResultIndex:this.lastProcessedResultIndex,cumulativeSent:this.cumulativeSentTranscript,continuous:this.config.continuous},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T5'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:140',message:'Recognition started',data:{lastProcessedResultIndex:this.lastProcessedResultIndex,cumulativeSent:this.cumulativeSentTranscript,continuous:this.config.continuous},sessionId:'debug-session',runId:'run1',hypothesisId:'T5'});
         this.callbacks?.onStart?.();
       };
 
       this.recognition.onresult = (event: any) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:144',message:'onresult event received',data:{totalResults:event.results.length,lastProcessedIndex:this.lastProcessedResultIndex,sentSegmentsCount:this.sentFinalSegments.size,allResults:Array.from(event.results).map((r:any,i:number)=>({index:i,transcript:r[0].transcript.trim(),isFinal:r.isFinal}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:144',message:'onresult event received',data:{totalResults:event.results.length,lastProcessedIndex:this.lastProcessedResultIndex,sentSegmentsCount:this.sentFinalSegments.size,allResults:Array.from(event.results).map((r:any,i:number)=>({index:i,transcript:r[0].transcript.trim(),isFinal:r.isFinal}))},sessionId:'debug-session',runId:'run1',hypothesisId:'T1'});
 
         let newFinalTranscript = '';
         let latestInterimTranscript = '';
@@ -330,9 +296,7 @@ export class SpeechRecognitionWrapper {
             if (this.sentFinalSegments.has(normalizedResult)) {
               // Exact duplicate segment, skip it
               this.lastProcessedResultIndex = i;
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:177',message:'Skipping exact duplicate segment',data:{result,index:i,normalizedResult},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T13'})}).catch(()=>{});
-              // #endregion
+              debugLog({location:'speech-recognition-wrapper.ts:177',message:'Skipping exact duplicate segment',data:{result,index:i,normalizedResult},sessionId:'debug-session',runId:'run1',hypothesisId:'T13'});
               continue;
             }
             
@@ -368,15 +332,11 @@ export class SpeechRecognitionWrapper {
                 newFinalTranscript += newPart + ' ';
                 this.lastProcessedResultIndex = i;
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:200',message:'Extracting new part from cumulative',data:{result,newPart,cumulativeBefore:this.cumulativeSentTranscript.substring(0,Math.max(0,this.cumulativeSentTranscript.length-newPart.length)).trim(),cumulativeAfter:this.cumulativeSentTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T11'})}).catch(()=>{});
-                // #endregion
+                debugLog({location:'speech-recognition-wrapper.ts:200',message:'Extracting new part from cumulative',data:{result,newPart,cumulativeBefore:this.cumulativeSentTranscript.substring(0,Math.max(0,this.cumulativeSentTranscript.length-newPart.length)).trim(),cumulativeAfter:this.cumulativeSentTranscript},sessionId:'debug-session',runId:'run1',hypothesisId:'T11'});
               } else {
                 // No new content, skip
                 this.lastProcessedResultIndex = i;
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:210',message:'Skipping - no new content in cumulative',data:{result,index:i,cumulativeSent:this.cumulativeSentTranscript,cumulativeUpToThis},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T10'})}).catch(()=>{});
-                // #endregion
+                debugLog({location:'speech-recognition-wrapper.ts:210',message:'Skipping - no new content in cumulative',data:{result,index:i,cumulativeSent:this.cumulativeSentTranscript,cumulativeUpToThis},sessionId:'debug-session',runId:'run1',hypothesisId:'T10'});
               }
             } else if (!normalizedSent || !normalizedCumulative.includes(normalizedSent)) {
               // This is a completely new phrase (doesn't extend what we sent)
@@ -388,16 +348,12 @@ export class SpeechRecognitionWrapper {
               newFinalTranscript += newPart + ' ';
               this.lastProcessedResultIndex = i;
               
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:225',message:'New independent phrase detected',data:{result,newPart,cumulativeBefore:this.cumulativeSentTranscript.substring(0,Math.max(0,this.cumulativeSentTranscript.length-newPart.length)).trim(),cumulativeAfter:this.cumulativeSentTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T12'})}).catch(()=>{});
-              // #endregion
+              debugLog({location:'speech-recognition-wrapper.ts:225',message:'New independent phrase detected',data:{result,newPart,cumulativeBefore:this.cumulativeSentTranscript.substring(0,Math.max(0,this.cumulativeSentTranscript.length-newPart.length)).trim(),cumulativeAfter:this.cumulativeSentTranscript},sessionId:'debug-session',runId:'run1',hypothesisId:'T12'});
             } else {
               // Overlap case - cumulative contains sent but doesn't start with it
               // This is likely a duplicate or refinement, skip it
               this.lastProcessedResultIndex = i;
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:235',message:'Skipping duplicate/overlapping final result',data:{result,index:i,cumulativeSent:this.cumulativeSentTranscript,cumulativeUpToThis},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T10'})}).catch(()=>{});
-              // #endregion
+              debugLog({location:'speech-recognition-wrapper.ts:235',message:'Skipping duplicate/overlapping final result',data:{result,index:i,cumulativeSent:this.cumulativeSentTranscript,cumulativeUpToThis},sessionId:'debug-session',runId:'run1',hypothesisId:'T10'});
             }
           } else {
             // For interim results, only use the latest one
@@ -405,25 +361,19 @@ export class SpeechRecognitionWrapper {
           }
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:160',message:'Processing results',data:{newFinalText:newFinalTranscript.trim(),interimText:latestInterimTranscript,newLastProcessedIndex:this.lastProcessedResultIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T2'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:160',message:'Processing results',data:{newFinalText:newFinalTranscript.trim(),interimText:latestInterimTranscript,newLastProcessedIndex:this.lastProcessedResultIndex},sessionId:'debug-session',runId:'run1',hypothesisId:'T2'});
 
         const finalText = newFinalTranscript.trim();
         const interimText = latestInterimTranscript;
 
         // Only send if there's new final text that we haven't sent before
         if (finalText) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:168',message:'Sending final result',data:{finalText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T3'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'speech-recognition-wrapper.ts:168',message:'Sending final result',data:{finalText},sessionId:'debug-session',runId:'run1',hypothesisId:'T3'});
           this.callbacks?.onResult(finalText, true);
         }
         // Always send interim text if present (it's the latest)
         if (interimText) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:175',message:'Sending interim result',data:{interimText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'T4'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'speech-recognition-wrapper.ts:175',message:'Sending interim result',data:{interimText},sessionId:'debug-session',runId:'run1',hypothesisId:'T4'});
           this.callbacks?.onResult(interimText, false);
         }
       };
@@ -477,9 +427,7 @@ export class SpeechRecognitionWrapper {
   private async startVosk(): Promise<void> {
     // Check for model and stream - recognizer is created below
     if (!this.voskModel || !this.mediaStream) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:477',message:'Vosk start check failed',data:{hasVoskModel:!!this.voskModel,hasMediaStream:!!this.mediaStream,streamActive:this.mediaStream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:477',message:'Vosk start check failed',data:{hasVoskModel:!!this.voskModel,hasMediaStream:!!this.mediaStream,streamActive:this.mediaStream?.active},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       this.callbacks?.onError('Vosk model or media stream not available');
       return;
     }
@@ -490,24 +438,18 @@ export class SpeechRecognitionWrapper {
       // Edge-specific: Try using original stream first (MediaStreamSource created before MediaRecorder)
       // Edge may allow MediaStreamSource to receive audio if created BEFORE MediaRecorder starts
       // This works in Chrome, so it might work in Edge if timing is correct
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:490',message:'Edge: Using original stream (MediaStreamSource before MediaRecorder)',data:{isEdge:this.isEdge,hasSeparateStream:!!this.voskAudioStream},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:490',message:'Edge: Using original stream (MediaStreamSource before MediaRecorder)',data:{isEdge:this.isEdge,hasSeparateStream:!!this.voskAudioStream},sessionId:'debug-session',runId:'run1',hypothesisId:'H6'});
 
       // Set up audio context for processing
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // #region agent log
       const audioTracks = this.mediaStream.getAudioTracks();
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:487',message:'Setting up audio context',data:{audioContextSampleRate:this.audioContext.sampleRate,audioContextState:this.audioContext.state,streamActive:this.mediaStream.active,audioTrackCount:audioTracks.length,audioTracks:audioTracks.map(t=>({id:t.id,enabled:t.enabled,muted:t.muted,readyState:t.readyState,label:t.label}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:487',message:'Setting up audio context',data:{audioContextSampleRate:this.audioContext.sampleRate,audioContextState:this.audioContext.state,streamActive:this.mediaStream.active,audioTrackCount:audioTracks.length,audioTracks:audioTracks.map(t=>({id:t.id,enabled:t.enabled,muted:t.muted,readyState:t.readyState,label:t.label}))},sessionId:'debug-session',runId:'run1',hypothesisId:'H2'});
       
       // Resume audio context if suspended (required in some browsers after user interaction)
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:493',message:'AudioContext resumed',data:{newState:this.audioContext.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:493',message:'AudioContext resumed',data:{newState:this.audioContext.state},sessionId:'debug-session',runId:'run1',hypothesisId:'H2'});
       }
       
       // Get audio track - MediaStream tracks can be consumed by multiple sources
@@ -521,9 +463,7 @@ export class SpeechRecognitionWrapper {
       const bufferSize = 4096;
       this.processor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:496',message:'ScriptProcessor created',data:{bufferSize,hasProcessor:!!this.processor},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:496',message:'ScriptProcessor created',data:{bufferSize,hasProcessor:!!this.processor},sessionId:'debug-session',runId:'run1',hypothesisId:'H3'});
       
       // Set up audio processing handler BEFORE connecting
       // Process audio data
@@ -540,9 +480,7 @@ export class SpeechRecognitionWrapper {
         
         // Log every 10th buffer, or whenever audio is detected
         if (bufferCount % 10 === 0 || hasAudio) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:536',message:'Audio processing',data:{hasRecognizer:!!this.voskRecognizer,audioLevel:audioLevel,maxAmplitude:maxAmplitude,bufferLength:inputData.length,sampleRate:event.inputBuffer.sampleRate,hasAudio:hasAudio,bufferCount},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'speech-recognition-wrapper.ts:536',message:'Audio processing',data:{hasRecognizer:!!this.voskRecognizer,audioLevel:audioLevel,maxAmplitude:maxAmplitude,bufferLength:inputData.length,sampleRate:event.inputBuffer.sampleRate,hasAudio:hasAudio,bufferCount},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
         }
         
         // acceptWaveform expects an AudioBuffer, not Int16Array
@@ -561,31 +499,23 @@ export class SpeechRecognitionWrapper {
         audioTrack.enabled = true;
       }
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:550',message:'Creating MediaStreamSource',data:{isEdge:this.isEdge,audioTrackId:audioTrack.id,audioTrackEnabled:audioTrack.enabled,audioTrackMuted:audioTrack.muted,audioTrackReadyState:audioTrack.readyState,streamActive:this.mediaStream.active,streamId:this.mediaStream.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:550',message:'Creating MediaStreamSource',data:{isEdge:this.isEdge,audioTrackId:audioTrack.id,audioTrackEnabled:audioTrack.enabled,audioTrackMuted:audioTrack.muted,audioTrackReadyState:audioTrack.readyState,streamActive:this.mediaStream.active,streamId:this.mediaStream.id},sessionId:'debug-session',runId:'run1',hypothesisId:'H6'});
       
       // Use separate audio stream for Edge if available, or original stream
       // For Edge, we try original stream first (created before MediaRecorder)
       const streamForVosk = (this.isEdge && this.voskAudioStream) ? this.voskAudioStream : this.mediaStream;
       const streamTracks = streamForVosk.getAudioTracks();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:578',message:'Stream selection for Vosk',data:{usingSeparateStream:!!this.voskAudioStream,streamId:streamForVosk.id,streamActive:streamForVosk.active,audioTrackCount:streamTracks.length,audioTracks:streamTracks.map(t=>({id:t.id,enabled:t.enabled,muted:t.muted,readyState:t.readyState,label:t.label}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:578',message:'Stream selection for Vosk',data:{usingSeparateStream:!!this.voskAudioStream,streamId:streamForVosk.id,streamActive:streamForVosk.active,audioTrackCount:streamTracks.length,audioTracks:streamTracks.map(t=>({id:t.id,enabled:t.enabled,muted:t.muted,readyState:t.readyState,label:t.label}))},sessionId:'debug-session',runId:'run1',hypothesisId:'H6'});
       
       const source = this.audioContext.createMediaStreamSource(streamForVosk);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:590',message:'MediaStreamSource created',data:{hasSource:!!source,sourceType:source?.constructor?.name,audioContextState:this.audioContext.state,usingStreamId:streamForVosk.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:590',message:'MediaStreamSource created',data:{hasSource:!!source,sourceType:source?.constructor?.name,audioContextState:this.audioContext.state,usingStreamId:streamForVosk.id},sessionId:'debug-session',runId:'run1',hypothesisId:'H6'});
       
       // Create recognizer with the correct sample rate matching the audio context
       const sampleRate = this.audioContext.sampleRate;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:490',message:'Creating recognizer with audio context sample rate',data:{sampleRate,hasVoskModel:!!this.voskModel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:490',message:'Creating recognizer with audio context sample rate',data:{sampleRate,hasVoskModel:!!this.voskModel},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
       
       if (this.voskModel && this.voskModel.KaldiRecognizer && typeof this.voskModel.KaldiRecognizer === 'function') {
         this.voskRecognizer = new this.voskModel.KaldiRecognizer(sampleRate);
@@ -596,9 +526,7 @@ export class SpeechRecognitionWrapper {
       // Set up Vosk recognizer event handlers
       // The event handlers receive a message object with result.text or result.partial, not a string
       this.voskRecognizer.on('result', (message: any) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:500',message:'Vosk result event received',data:{messageType:typeof message,hasResult:!!message?.result,resultText:message?.result?.text,resultKeys:message ? Object.keys(message) : []},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:500',message:'Vosk result event received',data:{messageType:typeof message,hasResult:!!message?.result,resultText:message?.result?.text,resultKeys:message ? Object.keys(message) : []},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
         const text = message?.result?.text || message?.text || message;
         if (text && typeof text === 'string' && text.trim()) {
           // Vosk provides final results
@@ -607,9 +535,7 @@ export class SpeechRecognitionWrapper {
       });
 
       this.voskRecognizer.on('partialresult', (message: any) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:510',message:'Vosk partialresult event received',data:{messageType:typeof message,hasResult:!!message?.result,resultPartial:message?.result?.partial,resultKeys:message ? Object.keys(message) : []},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'speech-recognition-wrapper.ts:510',message:'Vosk partialresult event received',data:{messageType:typeof message,hasResult:!!message?.result,resultPartial:message?.result?.partial,resultKeys:message ? Object.keys(message) : []},sessionId:'debug-session',runId:'run1',hypothesisId:'H1'});
         const text = message?.result?.partial || message?.partial || message?.text || message;
         if (text && typeof text === 'string' && text.trim()) {
           // Vosk provides interim results
@@ -622,9 +548,7 @@ export class SpeechRecognitionWrapper {
       source.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'speech-recognition-wrapper.ts:625',message:'Audio chain connected',data:{hasSource:!!source,hasProcessor:!!this.processor,audioContextState:this.audioContext.state,isEdge:this.isEdge},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H8'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'speech-recognition-wrapper.ts:625',message:'Audio chain connected',data:{hasSource:!!source,hasProcessor:!!this.processor,audioContextState:this.audioContext.state,isEdge:this.isEdge},sessionId:'debug-session',runId:'run1',hypothesisId:'H8'});
       
       // Edge-specific: The fundamental issue is that Edge's MediaStreamSource doesn't receive audio
       // when MediaRecorder is using the same stream. This appears to be a browser limitation.

@@ -6,6 +6,7 @@ import FeedbackOverlay from './FeedbackOverlay';
 import Subtitles from './Subtitles';
 import { BehavioralSignal } from '@/app/lib/types';
 import { SignalAggregator } from '@/app/lib/signal-aggregator';
+import { debugLog } from '@/app/lib/debug-logger';
 
 export interface VideoPlayerProps extends Omit<VideoCaptureProps, 'onStreamReady'> {
   onStreamReady?: (stream: MediaStream) => void;
@@ -118,31 +119,23 @@ export default function VideoPlayer({
    * Records a video segment from the stream and sends it for analysis
    */
   const captureAndAnalyze = useCallback(async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
     
     // Check if stream is still active before starting analysis
     if (!isStreamActiveRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:121',message:'Early return: stream not active',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:121',message:'Early return: stream not active',data:{},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
       return;
     }
 
     const video = getVideoElement();
     if (!video || !enabled || isAnalyzing) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:127',message:'Early return: video/enabled/isAnalyzing check',data:{hasVideo:!!video,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:127',message:'Early return: video/enabled/isAnalyzing check',data:{hasVideo:!!video,enabled,isAnalyzing},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
       return;
     }
     
     // Check if video is ready and playing
     if (video.readyState < 2 || video.paused || video.ended) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:130',message:'Early return: video not ready',data:{readyState:video.readyState,paused:video.paused,ended:video.ended},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:130',message:'Early return: video not ready',data:{readyState:video.readyState,paused:video.paused,ended:video.ended},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
       return;
     }
 
@@ -155,9 +148,7 @@ export default function VideoPlayer({
     // Get the MediaStream from the video element
     const stream = video.srcObject as MediaStream;
     if (!stream || !stream.active) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:141',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:141',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
       return;
     }
 
@@ -189,9 +180,7 @@ export default function VideoPlayer({
                                     mimeType.includes('aac') ||
                                     mimeType.includes('mp4a');
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:164',message:'Audio track detection',data:{audioTrackCount:audioTracks.length,hasAudio,audioTracksEnabled:audioTracks.map(t=>({id:t.id,enabled:t.enabled,kind:t.kind,label:t.label,readyState:t.readyState})),mimeType,mimeTypeSupportsAudio,streamActive:stream.active,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:164',message:'Audio track detection',data:{audioTrackCount:audioTracks.length,hasAudio,audioTracksEnabled:audioTracks.map(t=>({id:t.id,enabled:t.enabled,kind:t.kind,label:t.label,readyState:t.readyState})),mimeType,mimeTypeSupportsAudio,streamActive:stream.active,videoTracks:stream.getVideoTracks().length},sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
       
       // Log information about recording capabilities
       if (hasAudio && mimeTypeSupportsAudio) {
@@ -232,17 +221,13 @@ export default function VideoPlayer({
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:210',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:210',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length},sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
 
       // Collect recorded chunks
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:217',message:'Chunk recorded',data:{chunkSize:event.data.size,chunkType:event.data.type,totalChunks:recordedChunksRef.current.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
+          debugLog({location:'VideoPlayer.tsx:217',message:'Chunk recorded',data:{chunkSize:event.data.size,chunkType:event.data.type,totalChunks:recordedChunksRef.current.length},sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
         }
       };
 
@@ -345,9 +330,7 @@ export default function VideoPlayer({
       }
 
       // Combine recorded chunks into a single blob
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:314',message:'About to create blob',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),mediaRecorderState:mediaRecorder.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:314',message:'About to create blob',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),mediaRecorderState:mediaRecorder.state},sessionId:'debug-session',runId:'run1',hypothesisId:'M'});
       
       // If no chunks yet, wait a bit more (shouldn't happen with the improved onstop handler, but just in case)
       if (recordedChunksRef.current.length === 0) {
@@ -356,15 +339,11 @@ export default function VideoPlayer({
       
       const videoBlob = new Blob(recordedChunksRef.current, { type: mimeType });
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:325',message:'Video blob created',data:{blobSize:videoBlob.size,blobType:videoBlob.type,chunksCount:recordedChunksRef.current.length,hasAudioCodec:mimeType.includes('opus')||mimeType.includes('vorbis')||mimeType.includes('aac')||mimeType.includes('mp4a'),originalMimeType:mimeType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:325',message:'Video blob created',data:{blobSize:videoBlob.size,blobType:videoBlob.type,chunksCount:recordedChunksRef.current.length,hasAudioCodec:mimeType.includes('opus')||mimeType.includes('vorbis')||mimeType.includes('aac')||mimeType.includes('mp4a'),originalMimeType:mimeType},sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
       
       // Validate blob size (should be > 0)
       if (videoBlob.size === 0) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:337',message:'Empty blob detected',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),waited:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'VideoPlayer.tsx:337',message:'Empty blob detected',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),waited:true},sessionId:'debug-session',runId:'run1',hypothesisId:'O'});
         throw new Error('Recorded video blob is empty');
       }
 
@@ -373,9 +352,7 @@ export default function VideoPlayer({
         const reader = new FileReader();
         reader.onloadend = () => {
           if (typeof reader.result === 'string') {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:300',message:'Base64 conversion complete',data:{dataUrlPrefix:reader.result.substring(0,Math.min(50,reader.result.length)),base64Length:reader.result.length,detectedMimeType:reader.result.match(/^data:([^;,]+)/)?.[1]||'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
+            debugLog({location:'VideoPlayer.tsx:300',message:'Base64 conversion complete',data:{dataUrlPrefix:reader.result.substring(0,Math.min(50,reader.result.length)),base64Length:reader.result.length,detectedMimeType:reader.result.match(/^data:([^;,]+)/)?.[1]||'unknown'},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
             resolve(reader.result);
           } else {
             reject(new Error('Failed to convert blob to base64'));
@@ -408,9 +385,7 @@ export default function VideoPlayer({
       });
       const apiRequestDuration = Date.now() - apiRequestStart;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:360',message:'API request timing',data:{durationMs:apiRequestDuration,status:response.status,blobSize:videoBlob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'P'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:360',message:'API request timing',data:{durationMs:apiRequestDuration,status:response.status,blobSize:videoBlob.size},sessionId:'debug-session',runId:'run1',hypothesisId:'P'});
 
       // Check if stream is still active after fetch completes
       if (!isStreamActiveRef.current) {
@@ -425,9 +400,7 @@ export default function VideoPlayer({
 
       const data = await response.json();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:272',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:272',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},sessionId:'debug-session',runId:'run1',hypothesisId:'I'});
       
       // Final check before updating signals
       if (!isStreamActiveRef.current) {
@@ -467,14 +440,10 @@ export default function VideoPlayer({
     } catch (error) {
       // Ignore abort errors (expected when stream stops)
       if (error instanceof Error && error.name === 'AbortError') {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:418',message:'Analysis aborted (expected)',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'VideoPlayer.tsx:418',message:'Analysis aborted (expected)',data:{errorName:error.name},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
         return;
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:421',message:'Error during analysis',data:{errorName:error instanceof Error?error.name:'unknown',errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:421',message:'Error during analysis',data:{errorName:error instanceof Error?error.name:'unknown',errorMessage:error instanceof Error?error.message:String(error)},sessionId:'debug-session',runId:'run1',hypothesisId:'J'});
       console.error('Error during video segment analysis:', error);
     } finally {
       // Clean up MediaRecorder
@@ -496,9 +465,7 @@ export default function VideoPlayer({
    * Uses a sequential approach: waits for each analysis to complete before starting the next
    */
   const handleStreamReady = useCallback((stream: MediaStream) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},sessionId:'debug-session',runId:'run1',hypothesisId:'K'});
     
     // Mark stream as active and store stream reference for subtitles
     isStreamActiveRef.current = true;
@@ -532,13 +499,9 @@ export default function VideoPlayer({
       // Start first analysis
       runAnalysis();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},sessionId:'debug-session',runId:'run1',hypothesisId:'K'});
     } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},sessionId:'debug-session',runId:'run1',hypothesisId:'K'});
     }
 
     onStreamReady?.(stream);
@@ -606,9 +569,7 @@ export default function VideoPlayer({
   // The handleStreamReady callback already sets up the interval correctly
   useEffect(() => {
     if (!enabled && analysisIntervalRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},sessionId:'debug-session',runId:'run1',hypothesisId:'L'});
       clearInterval(analysisIntervalRef.current);
       analysisIntervalRef.current = null;
     }

@@ -5,6 +5,7 @@ import AudioCapture from './AudioCapture';
 import Subtitles from './Subtitles';
 import { BehavioralSignal } from '@/app/lib/types';
 import { SignalAggregator } from '@/app/lib/signal-aggregator';
+import { debugLog } from '@/app/lib/debug-logger';
 
 export interface AudioPlayerProps {
   onStreamReady?: (stream: MediaStream) => void;
@@ -115,24 +116,18 @@ export default function AudioPlayer({
    * Records an audio segment from the stream and sends it for analysis
    */
   const captureAndAnalyze = useCallback(async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:89',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'AudioPlayer.tsx:89',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
     
     // Check if stream is still active before starting analysis
     if (!isStreamActiveRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:92',message:'Early return: stream not active',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:92',message:'Early return: stream not active',data:{},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       return;
     }
 
     // Use stream from ref instead of state to avoid stale closure issues
     const audioStream = streamRef.current;
     if (!audioStream || !enabled || isAnalyzing) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:98',message:'Early return: stream/enabled/isAnalyzing check',data:{hasStream:!!audioStream,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:98',message:'Early return: stream/enabled/isAnalyzing check',data:{hasStream:!!audioStream,enabled,isAnalyzing},sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'});
       return;
     }
 
@@ -195,9 +190,8 @@ export default function AudioPlayer({
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             // #region agent log
             if (videoTrack) {
-              fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:185',message:'Canvas updated',data:{videoTrackReadyState:videoTrack.readyState,videoTrackEnabled:videoTrack.enabled,canvasStreamActive:canvasStream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H5'})}).catch(()=>{});
+              debugLog({location:'AudioPlayer.tsx:185',message:'Canvas updated',data:{videoTrackReadyState:videoTrack.readyState,videoTrackEnabled:videoTrack.enabled,canvasStreamActive:canvasStream?.active},sessionId:'debug-session',runId:'post-fix',hypothesisId:'H5'});
             }
-            // #endregion
           }
         }, 100); // Update every 100ms to keep stream active
         canvasUpdateIntervalRef.current = canvasUpdateInterval;
@@ -217,15 +211,11 @@ export default function AudioPlayer({
       combinedStream.addTrack(track);
     });
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:155',message:'Combined stream created',data:{audioTracks:combinedStream.getAudioTracks().length,videoTracks:combinedStream.getVideoTracks().length,canvasWidth:canvas.width,canvasHeight:canvas.height,hasVideoTrack:!!videoTrack},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'AudioPlayer.tsx:155',message:'Combined stream created',data:{audioTracks:combinedStream.getAudioTracks().length,videoTracks:combinedStream.getVideoTracks().length,canvasWidth:canvas.width,canvasHeight:canvas.height,hasVideoTrack:!!videoTrack},sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'});
     
     const stream = combinedStream;
     if (!stream || !stream.active) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:110',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:110',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       return;
     }
 
@@ -282,9 +272,7 @@ export default function AudioPlayer({
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:272',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length,streamActive:stream.active,hasVideoCodec:mimeType.includes('vp8')||mimeType.includes('vp9')||mimeType.includes('avc1')},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:272',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length,streamActive:stream.active,hasVideoCodec:mimeType.includes('vp8')||mimeType.includes('vp9')||mimeType.includes('avc1')},sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'});
 
       // Collect recorded chunks
       mediaRecorder.ondataavailable = (event) => {
@@ -293,9 +281,7 @@ export default function AudioPlayer({
         }
       };
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:254',message:'Starting recording',data:{recordDuration,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length,videoTrackReadyState:stream.getVideoTracks()[0]?.readyState,audioTrackReadyState:stream.getAudioTracks()[0]?.readyState},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:254',message:'Starting recording',data:{recordDuration,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length,videoTrackReadyState:stream.getVideoTracks()[0]?.readyState,audioTrackReadyState:stream.getAudioTracks()[0]?.readyState},sessionId:'debug-session',runId:'post-fix',hypothesisId:'H1'});
       
       // Start recording
       mediaRecorder.start();
@@ -395,9 +381,7 @@ export default function AudioPlayer({
       // Create blob with video MIME type (API expects video format even for audio-only)
       const audioBlob = new Blob(recordedChunksRef.current, { type: mimeType });
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:366',message:'Audio blob created (as video format)',data:{blobSize:audioBlob.size,blobType:audioBlob.type,mimeType,chunksCount:recordedChunksRef.current.length,isVideoFormat:mimeType.startsWith('video/'),recordDuration,chunksTotalSize:recordedChunksRef.current.reduce((sum,chunk)=>sum+chunk.size,0)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:366',message:'Audio blob created (as video format)',data:{blobSize:audioBlob.size,blobType:audioBlob.type,mimeType,chunksCount:recordedChunksRef.current.length,isVideoFormat:mimeType.startsWith('video/'),recordDuration,chunksTotalSize:recordedChunksRef.current.reduce((sum,chunk)=>sum+chunk.size,0)},sessionId:'debug-session',runId:'post-fix',hypothesisId:'H2'});
       
       // Validate blob size
       if (audioBlob.size === 0) {
@@ -443,9 +427,7 @@ export default function AudioPlayer({
       });
       const apiRequestDuration = Date.now() - apiRequestStart;
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:280',message:'API request completed',data:{durationMs:apiRequestDuration,status:response.status,blobSize:audioBlob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:280',message:'API request completed',data:{durationMs:apiRequestDuration,status:response.status,blobSize:audioBlob.size},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
 
       // Check if stream is still active after fetch completes
       if (!isStreamActiveRef.current) {
@@ -460,9 +442,7 @@ export default function AudioPlayer({
 
       const data = await response.json();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:297',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:297',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       
       // Final check before updating signals
       if (!isStreamActiveRef.current) {
@@ -499,9 +479,7 @@ export default function AudioPlayer({
         setCurrentSignals(enhancedSignals);
         onSignalsUpdate?.(enhancedSignals);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:333',message:'Signals updated',data:{signalsCount:enhancedSignals.length,signals:enhancedSignals.map(s=>({type:s.type,intensity:s.intensity}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        debugLog({location:'AudioPlayer.tsx:333',message:'Signals updated',data:{signalsCount:enhancedSignals.length,signals:enhancedSignals.map(s=>({type:s.type,intensity:s.intensity}))},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
       }
     } catch (error) {
       // Ignore abort errors (expected when stream stops)
@@ -530,9 +508,7 @@ export default function AudioPlayer({
   }, [enabled, isAnalyzing, onSignalsUpdate, getSupportedMimeType, analysisInterval, signalAggregator]);
 
   const handleStreamReady = useCallback((stream: MediaStream) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:360',message:'handleStreamReady called',data:{hasStream:!!stream,audioTracks:stream?.getAudioTracks().length||0,videoTracks:stream?.getVideoTracks().length||0,hasOnSignalsUpdate:!!onSignalsUpdate,enabled,analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'AudioPlayer.tsx:360',message:'handleStreamReady called',data:{hasStream:!!stream,audioTracks:stream?.getAudioTracks().length||0,videoTracks:stream?.getVideoTracks().length||0,hasOnSignalsUpdate:!!onSignalsUpdate,enabled,analysisInterval},sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'});
     
     // Mark stream as active and store stream reference in both state and ref
     isStreamActiveRef.current = true;
@@ -567,18 +543,14 @@ export default function AudioPlayer({
       // Start first analysis
       runAnalysis();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:395',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
+      debugLog({location:'AudioPlayer.tsx:395',message:'Sequential analysis started',data:{intervalMs:analysisInterval},sessionId:'debug-session',runId:'run1',hypothesisId:'A'});
     }
 
     onStreamReady?.(stream);
   }, [enabled, analysisInterval, captureAndAnalyze, onStreamReady, onSignalsUpdate]);
 
   const handleStreamStop = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:410',message:'handleStreamStop called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    debugLog({location:'AudioPlayer.tsx:410',message:'handleStreamStop called',data:{},sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'});
     
     // Mark stream as inactive and clear stream reference
     isStreamActiveRef.current = false;
@@ -654,11 +626,9 @@ export default function AudioPlayer({
     }
   }, [enabled]);
 
-  // #region agent log
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AudioPlayer.tsx:52',message:'AudioPlayer render',data:{hasOnSignalsUpdate:!!onSignalsUpdate,enabled,isStreamActive:isStreamActiveRef.current,hasStream:!!currentStream},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    debugLog({location:'AudioPlayer.tsx:52',message:'AudioPlayer render',data:{hasOnSignalsUpdate:!!onSignalsUpdate,enabled,isStreamActive:isStreamActiveRef.current,hasStream:!!currentStream},sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
   }, [onSignalsUpdate, enabled, currentStream]);
-  // #endregion
 
   return (
     <div className={`relative w-full h-full ${className}`}>
