@@ -119,13 +119,13 @@ export default function VideoPlayer({
    */
   const captureAndAnalyze = useCallback(async () => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
     // #endregion
     
     // Check if stream is still active before starting analysis
     if (!isStreamActiveRef.current) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:121',message:'Early return: stream not active',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:121',message:'Early return: stream not active',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
       // #endregion
       return;
     }
@@ -133,7 +133,7 @@ export default function VideoPlayer({
     const video = getVideoElement();
     if (!video || !enabled || isAnalyzing) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:127',message:'Early return: video/enabled/isAnalyzing check',data:{hasVideo:!!video,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:127',message:'Early return: video/enabled/isAnalyzing check',data:{hasVideo:!!video,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
       // #endregion
       return;
     }
@@ -141,7 +141,7 @@ export default function VideoPlayer({
     // Check if video is ready and playing
     if (video.readyState < 2 || video.paused || video.ended) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:130',message:'Early return: video not ready',data:{readyState:video.readyState,paused:video.paused,ended:video.ended},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:130',message:'Early return: video not ready',data:{readyState:video.readyState,paused:video.paused,ended:video.ended},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
       // #endregion
       return;
     }
@@ -156,7 +156,7 @@ export default function VideoPlayer({
     const stream = video.srcObject as MediaStream;
     if (!stream || !stream.active) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:141',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:141',message:'Early return: no stream or stream inactive',data:{hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
       // #endregion
       return;
     }
@@ -190,7 +190,7 @@ export default function VideoPlayer({
                                     mimeType.includes('mp4a');
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:164',message:'Audio track detection',data:{audioTrackCount:audioTracks.length,hasAudio,audioTracksEnabled:audioTracks.map(t=>({id:t.id,enabled:t.enabled,kind:t.kind,label:t.label,readyState:t.readyState})),mimeType,mimeTypeSupportsAudio,streamActive:stream.active,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:164',message:'Audio track detection',data:{audioTrackCount:audioTracks.length,hasAudio,audioTracksEnabled:audioTracks.map(t=>({id:t.id,enabled:t.enabled,kind:t.kind,label:t.label,readyState:t.readyState})),mimeType,mimeTypeSupportsAudio,streamActive:stream.active,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
       
       // Log information about recording capabilities
@@ -233,7 +233,7 @@ export default function VideoPlayer({
       recordedChunksRef.current = [];
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:210',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:210',message:'MediaRecorder created',data:{mimeType:mediaRecorder.mimeType,state:mediaRecorder.state,audioBitsPerSecond:mediaRecorder.audioBitsPerSecond,videoBitsPerSecond:mediaRecorder.videoBitsPerSecond,streamAudioTracks:stream.getAudioTracks().length,streamVideoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
 
       // Collect recorded chunks
@@ -241,7 +241,7 @@ export default function VideoPlayer({
         if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:217',message:'Chunk recorded',data:{chunkSize:event.data.size,chunkType:event.data.type,totalChunks:recordedChunksRef.current.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:217',message:'Chunk recorded',data:{chunkSize:event.data.size,chunkType:event.data.type,totalChunks:recordedChunksRef.current.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
           // #endregion
         }
       };
@@ -346,7 +346,7 @@ export default function VideoPlayer({
 
       // Combine recorded chunks into a single blob
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:314',message:'About to create blob',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),mediaRecorderState:mediaRecorder.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:314',message:'About to create blob',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),mediaRecorderState:mediaRecorder.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
       // #endregion
       
       // If no chunks yet, wait a bit more (shouldn't happen with the improved onstop handler, but just in case)
@@ -357,13 +357,13 @@ export default function VideoPlayer({
       const videoBlob = new Blob(recordedChunksRef.current, { type: mimeType });
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:325',message:'Video blob created',data:{blobSize:videoBlob.size,blobType:videoBlob.type,chunksCount:recordedChunksRef.current.length,hasAudioCodec:mimeType.includes('opus')||mimeType.includes('vorbis')||mimeType.includes('aac')||mimeType.includes('mp4a'),originalMimeType:mimeType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:325',message:'Video blob created',data:{blobSize:videoBlob.size,blobType:videoBlob.type,chunksCount:recordedChunksRef.current.length,hasAudioCodec:mimeType.includes('opus')||mimeType.includes('vorbis')||mimeType.includes('aac')||mimeType.includes('mp4a'),originalMimeType:mimeType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
       
       // Validate blob size (should be > 0)
       if (videoBlob.size === 0) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:337',message:'Empty blob detected',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),waited:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:337',message:'Empty blob detected',data:{chunksCount:recordedChunksRef.current.length,chunksSizes:recordedChunksRef.current.map(c=>c.size),waited:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'O'})}).catch(()=>{});
         // #endregion
         throw new Error('Recorded video blob is empty');
       }
@@ -374,7 +374,7 @@ export default function VideoPlayer({
         reader.onloadend = () => {
           if (typeof reader.result === 'string') {
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:300',message:'Base64 conversion complete',data:{dataUrlPrefix:reader.result.substring(0,Math.min(50,reader.result.length)),base64Length:reader.result.length,detectedMimeType:reader.result.match(/^data:([^;,]+)/)?.[1]||'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:300',message:'Base64 conversion complete',data:{dataUrlPrefix:reader.result.substring(0,Math.min(50,reader.result.length)),base64Length:reader.result.length,detectedMimeType:reader.result.match(/^data:([^;,]+)/)?.[1]||'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
             // #endregion
             resolve(reader.result);
           } else {
@@ -409,7 +409,7 @@ export default function VideoPlayer({
       const apiRequestDuration = Date.now() - apiRequestStart;
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:360',message:'API request timing',data:{durationMs:apiRequestDuration,status:response.status,blobSize:videoBlob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'P'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:360',message:'API request timing',data:{durationMs:apiRequestDuration,status:response.status,blobSize:videoBlob.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'P'})}).catch(()=>{});
       // #endregion
 
       // Check if stream is still active after fetch completes
@@ -426,7 +426,7 @@ export default function VideoPlayer({
       const data = await response.json();
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:272',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:272',message:'API response received',data:{signalsCount:data.signals?.length||0,signals:data.signals?.map((s:any)=>({type:s.type,intensity:s.intensity}))||[],responseStatus:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
       // #endregion
       
       // Final check before updating signals
@@ -468,12 +468,12 @@ export default function VideoPlayer({
       // Ignore abort errors (expected when stream stops)
       if (error instanceof Error && error.name === 'AbortError') {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:418',message:'Analysis aborted (expected)',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:418',message:'Analysis aborted (expected)',data:{errorName:error.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
         // #endregion
         return;
       }
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:421',message:'Error during analysis',data:{errorName:error instanceof Error?error.name:'unknown',errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:421',message:'Error during analysis',data:{errorName:error instanceof Error?error.name:'unknown',errorMessage:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
       // #endregion
       console.error('Error during video segment analysis:', error);
     } finally {
@@ -497,7 +497,7 @@ export default function VideoPlayer({
    */
   const handleStreamReady = useCallback((stream: MediaStream) => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
     // #endregion
     
     // Mark stream as active and store stream reference for subtitles
@@ -533,11 +533,11 @@ export default function VideoPlayer({
       runAnalysis();
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
       // #endregion
     } else {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
       // #endregion
     }
 
@@ -607,7 +607,7 @@ export default function VideoPlayer({
   useEffect(() => {
     if (!enabled && analysisIntervalRef.current) {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
       // #endregion
       clearInterval(analysisIntervalRef.current);
       analysisIntervalRef.current = null;

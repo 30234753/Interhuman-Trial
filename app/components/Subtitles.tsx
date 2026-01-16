@@ -26,7 +26,7 @@ export default function Subtitles({
   // Initialize Speech Recognition
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:27',message:'Effect running - initializing recognition',data:{enabled,hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:27',message:'Effect running - initializing recognition',data:{enabled,hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
 
     // Check if Speech Recognition API is available
@@ -44,12 +44,12 @@ export default function Subtitles({
     recognition.lang = 'en-US'; // Set language to English
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:38',message:'Recognition instance created',data:{hasExistingInstance:!!recognitionRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:38',message:'Recognition instance created',data:{hasExistingInstance:!!recognitionRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
 
     recognition.onstart = () => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:42',message:'Recognition started',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:42',message:'Recognition started',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       setIsListening(true);
       setError(null);
@@ -66,7 +66,7 @@ export default function Subtitles({
           confidence: event.results[i][0].confidence
         });
       }
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:47',message:'onresult fired',data:{resultIndex:event.resultIndex,totalResults:event.results.length,allResults,currentTranscript:transcript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:47',message:'onresult fired',data:{resultIndex:event.resultIndex,totalResults:event.results.length,allResults,currentTranscript:transcript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
 
       // Build complete transcript from ALL final results (rebuild from scratch to avoid duplicates)
@@ -89,7 +89,7 @@ export default function Subtitles({
       }
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:59',message:'Processed results',data:{completeFinalTranscript,latestInterimTranscript,hasFinal:!!completeFinalTranscript,hasInterim:!!latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:59',message:'Processed results',data:{completeFinalTranscript,latestInterimTranscript,hasFinal:!!completeFinalTranscript,hasInterim:!!latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
 
       // Update interim transcript ref with latest interim only
@@ -99,7 +99,7 @@ export default function Subtitles({
       // Display: complete final transcript + latest interim
       setTranscript(() => {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:66',message:'Rebuilding transcript from all final results',data:{completeFinalTranscript,latestInterimTranscript,display:completeFinalTranscript + latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:66',message:'Rebuilding transcript from all final results',data:{completeFinalTranscript,latestInterimTranscript,display:completeFinalTranscript + latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         // Rebuild from scratch: all final results + latest interim
         const display = completeFinalTranscript + latestInterimTranscript;
@@ -156,12 +156,12 @@ export default function Subtitles({
     if (enabled && stream && stream.active) {
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:127',message:'Starting recognition on init',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:127',message:'Starting recognition on init',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         recognition.start();
       } catch (e) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:130',message:'Failed to start recognition',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:130',message:'Failed to start recognition',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         console.error('Failed to start speech recognition:', e);
       }
@@ -170,7 +170,7 @@ export default function Subtitles({
     // Cleanup on unmount
     return () => {
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:134',message:'Cleanup - stopping recognition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:134',message:'Cleanup - stopping recognition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       if (recognitionRef.current) {
         try {
@@ -188,19 +188,19 @@ export default function Subtitles({
     if (!recognitionRef.current) return;
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:147',message:'Stream change effect',data:{enabled,hasStream:!!stream,streamActive:stream?.active,isListening},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:147',message:'Stream change effect',data:{enabled,hasStream:!!stream,streamActive:stream?.active,isListening},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
 
     if (enabled && stream && stream.active && !isListening) {
       // Start recognition when stream becomes active
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:152',message:'Starting recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:152',message:'Starting recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         recognitionRef.current.start();
       } catch (e) {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:155',message:'Failed to start from stream change',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:155',message:'Failed to start from stream change',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         console.debug('Recognition start:', e);
       }
@@ -208,7 +208,7 @@ export default function Subtitles({
       // Stop recognition when stream stops or is disabled
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/994d5ac0-53a3-4149-9884-4dd3278366f7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:161',message:'Stopping recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:161',message:'Stopping recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         recognitionRef.current.stop();
       } catch (e) {
