@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SessionProvider } from "./lib/session-context";
+import NavigationBar from "./components/NavigationBar";
 
 export const metadata: Metadata = {
   title: "Roleplay Body Language Analyser",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <NavigationBar />
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

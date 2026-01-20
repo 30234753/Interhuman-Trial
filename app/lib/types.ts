@@ -38,3 +38,10 @@ export interface SessionState {
   signals: BehavioralSignal[];
 }
 
+export interface Report {
+  id: string;
+  name: string;
+  session_id: string;
+  created_at: string;
+}
+

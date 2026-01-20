@@ -70,17 +70,6 @@ export default function TestTranscriptionPage() {
       <div className="z-10 max-w-4xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="mb-4">
-            <a
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gray-800/50 hover:bg-gray-800/70 border border-gray-700/50 rounded-lg text-gray-300 hover:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Main
-            </a>
-          </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
             Deepgram Transcription Test
           </h1>
@@ -206,16 +195,6 @@ export default function TestTranscriptionPage() {
             <li>Check browser console (F12) for detailed logs</li>
             <li>Check server terminal for Deepgram WebSocket connection logs</li>
           </ol>
-          
-          <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <h4 className="text-blue-300 text-sm font-semibold mb-2">Architecture Note</h4>
-            <p className="text-blue-200 text-xs">
-              Deepgram uses WebSocket connections for live transcription. The WebSocket is established 
-              <strong> server-side</strong> between your Next.js server and Deepgram&apos;s API (wss://api.deepgram.com/v1/listen). 
-              The browser communicates via HTTP POST (audio chunks) and Server-Sent Events (SSE) for transcripts. 
-              Check the server terminal to see WebSocket connection logs.
-            </p>
-          </div>
         </div>
       </div>
     </main>

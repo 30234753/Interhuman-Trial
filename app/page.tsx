@@ -6,8 +6,10 @@ import SessionSummary from './components/SessionSummary';
 import { useState, useEffect, useRef } from 'react';
 import { BehavioralSignal } from './lib/types';
 import { useSession } from './lib/session-context';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
@@ -17,7 +19,7 @@ export default function Home() {
   const [liveEndTime, setLiveEndTime] = useState<number>(Date.now());
   const { updateSignals, isActive: sessionActive, sessionState } = useSession();
   const previousActiveState = useRef<boolean>(false);
-  const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number } | null>(null);
+  const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
 
   // Preserve session data before it's cleared
   useEffect(() => {
@@ -25,9 +27,10 @@ export default function Home() {
       preservedSessionData.current = {
         signals: [...sessionState.signals],
         startTime: sessionState.startTime,
+        sessionId: sessionState.sessionId,
       };
     }
-  }, [sessionActive, sessionState.signals, sessionState.startTime]);
+  }, [sessionActive, sessionState.signals, sessionState.startTime, sessionState.sessionId]);
 
   // Track session end and prepare summary data, and reset when new session starts
   useEffect(() => {
@@ -47,20 +50,25 @@ export default function Home() {
         ? sessionState.signals 
         : (preservedSessionData.current?.signals || []);
       const startTime = sessionState.startTime || preservedSessionData.current?.startTime;
+      const sessionId = sessionState.sessionId || preservedSessionData.current?.sessionId;
       
-      if (signals.length > 0 && startTime) {
+      if (signals.length > 0 && startTime && sessionId) {
         setSummaryData({
           signals,
           startTime,
           endTime,
         });
+        
+        // Navigate to timeline page when session ends
+        router.push(`/timeline/${sessionId}`);
+        
         // Clear preserved data after using it
         preservedSessionData.current = null;
       }
     }
     
     previousActiveState.current = sessionActive;
-  }, [sessionActive, sessionState.startTime, sessionState.signals]);
+  }, [sessionActive, sessionState.startTime, sessionState.signals, sessionState.sessionId, router]);
 
   // Update live endTime periodically when session is active (to avoid hydration issues)
   useEffect(() => {
@@ -101,14 +109,6 @@ export default function Home() {
           <p className="text-gray-400 text-sm md:text-base mt-2">
             Real-time behavioural analysis powered by AI
           </p>
-          <div className="mt-4">
-            <a
-              href="/test-transcription"
-              className="inline-block px-4 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg text-blue-300 hover:text-blue-200 transition-colors"
-            >
-              Test Transcription →
-            </a>
-          </div>
         </div>
         
         {/* Session Controls */}
@@ -150,13 +150,15 @@ export default function Home() {
           </div>
 
           {/* Session Summary - Sidebar, Always visible */}
-          <div className="w-full">
+          <div className="w-full flex">
             <SessionSummary
               signals={summaryData?.signals || (sessionActive ? sessionState.signals : [])}
               startTime={summaryData?.startTime || sessionState.startTime || null}
               endTime={summaryData?.endTime || (sessionActive ? liveEndTime : Date.now())}
               isLive={sessionActive && !summaryData}
               onClose={summaryData ? handleCloseSummary : undefined}
+              sessionId={sessionState.sessionId}
+              className="w-full"
             />
           </div>
         </div>
