@@ -8,6 +8,7 @@ interface SessionContextType {
   startSession: () => Promise<string | null>;
   stopSession: () => Promise<void>;
   updateSignals: (signals: BehavioralSignal[]) => void;
+  addTranscriptChunk: (text: string, chunkOrder: number, timestamp: number) => Promise<void>;
   isActive: boolean;
 }
 
@@ -143,6 +144,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     });
   }, [sessionState.isActive, sessionState.sessionId]);
 
+  const addTranscriptChunk = useCallback(async (text: string, chunkOrder: number, timestamp: number) => {
+    if (!sessionState.isActive || !sessionState.sessionId) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'addTranscriptChunk',
+          sessionId: sessionState.sessionId,
+          text,
+          chunkOrder,
+          timestamp,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save transcript chunk');
+      }
+    } catch (error) {
+      // Silently handle errors - chunk saves are non-critical for UI
+      // Errors can occur during hot reloads when server state is lost
+      console.error('Error saving transcript chunk:', error);
+    }
+  }, [sessionState.isActive, sessionState.sessionId]);
+
   return (
     <SessionContext.Provider
       value={{
@@ -150,6 +181,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         startSession,
         stopSession,
         updateSignals,
+        addTranscriptChunk,
         isActive: sessionState.isActive,
       }}
     >

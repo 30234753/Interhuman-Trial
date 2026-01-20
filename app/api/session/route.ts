@@ -1,31 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionData } from '@/app/lib/types';
+import { SessionData, BehavioralSignal, TranscriptChunk } from '@/app/lib/types';
+import { createSupabaseClient } from '@/app/lib/supabase';
 
 export const runtime = 'nodejs';
 
-// In-memory session storage (in production, use a database)
-const sessions = new Map<string, SessionData>();
-
 /**
  * POST /api/session
- * Handles session lifecycle: create, update, end
+ * Handles session lifecycle: create, update, addTranscriptChunk, end, get
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, sessionId } = body;
+    const supabase = createSupabaseClient();
 
     switch (action) {
       case 'create': {
-        // Create a new session
-        const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        // Create a new session in the database
+        const startTime = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('sessions')
+          .insert({
+            start_time: startTime,
+          })
+          .select('id, start_time')
+          .single();
+
+        if (error) {
+          console.error('Error creating session:', error);
+          return NextResponse.json(
+            { success: false, error: 'Failed to create session' },
+            { status: 500 }
+          );
+        }
+
+        const newSessionId = data.id;
         const sessionData: SessionData = {
           id: newSessionId,
-          startTime: Date.now(),
+          startTime: new Date(data.start_time).getTime(),
           signals: [],
         };
-
-        sessions.set(newSessionId, sessionData);
 
         return NextResponse.json({
           success: true,
@@ -35,7 +49,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'update': {
-        // Update an existing session with new signals
+        // Insert new signals into the database in batches
         if (!sessionId) {
           return NextResponse.json(
             { success: false, error: 'Session ID is required' },
@@ -43,42 +57,159 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        let session = sessions.get(sessionId);
-        if (!session) {
-          // Session not found - this can happen in development mode due to hot reloading
-          // Since session updates are non-critical (client state is source of truth),
-          // create the session if it doesn't exist (upsert behavior)
-          session = {
-            id: sessionId,
-            startTime: Date.now(),
-            signals: [],
-          };
-          sessions.set(sessionId, session);
+        if (!body.signals || !Array.isArray(body.signals) || body.signals.length === 0) {
+          return NextResponse.json(
+            { success: false, error: 'Signals array is required' },
+            { status: 400 }
+          );
         }
 
-        // Update session with new signals if provided
-        if (body.signals && Array.isArray(body.signals)) {
-          session.signals = [...session.signals, ...body.signals];
+        // Verify session exists
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id, start_time')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError || !sessionData) {
+          // Session not found - create it (upsert behavior for development)
+          const startTime = new Date().toISOString();
+          const { error: createError } = await supabase
+            .from('sessions')
+            .insert({
+              id: sessionId,
+              start_time: startTime,
+            });
+
+          if (createError) {
+            console.error('Error creating session during update:', createError);
+            return NextResponse.json(
+              { success: false, error: 'Session not found and could not be created' },
+              { status: 404 }
+            );
+          }
         }
 
-        // Calculate average stress score if there are stress signals
-        const stressSignals = session.signals.filter((s) => s.type === 'stress');
-        if (stressSignals.length > 0) {
-          const avgStress =
-            stressSignals.reduce((sum, s) => sum + s.intensity, 0) / stressSignals.length;
-          session.averageStressScore = Math.round(avgStress);
+        // Insert signals in batch
+        const signalsToInsert = body.signals.map((signal: BehavioralSignal) => ({
+          session_id: sessionId,
+          type: signal.type,
+          intensity: signal.intensity,
+          timestamp: signal.timestamp,
+        }));
+
+        const { error: signalsError } = await supabase
+          .from('signals')
+          .insert(signalsToInsert);
+
+        if (signalsError) {
+          console.error('Error inserting signals:', signalsError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to update session with signals' },
+            { status: 500 }
+          );
         }
 
-        sessions.set(sessionId, session);
+        // Fetch all signals for this session to calculate average stress score
+        const { data: allSignals, error: fetchError } = await supabase
+          .from('signals')
+          .select('type, intensity, timestamp')
+          .eq('session_id', sessionId)
+          .order('timestamp', { ascending: true });
+
+        if (fetchError) {
+          console.error('Error fetching signals:', fetchError);
+          // Still return success since signals were inserted
+        }
+
+        const signals: BehavioralSignal[] = allSignals?.map((s) => ({
+          type: s.type as BehavioralSignal['type'],
+          intensity: s.intensity,
+          timestamp: Number(s.timestamp),
+        })) || [];
+
+        // Calculate average stress score
+        const stressSignals = signals.filter((s) => s.type === 'stress');
+        const averageStressScore =
+          stressSignals.length > 0
+            ? Math.round(
+                stressSignals.reduce((sum, s) => sum + s.intensity, 0) / stressSignals.length
+              )
+            : undefined;
+
+        // Get session start time
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('start_time')
+          .eq('id', sessionId)
+          .single();
+
+        const sessionResponse: SessionData = {
+          id: sessionId,
+          startTime: session ? new Date(session.start_time).getTime() : Date.now(),
+          signals,
+          averageStressScore,
+        };
 
         return NextResponse.json({
           success: true,
-          sessionData: session,
+          sessionData: sessionResponse,
+        });
+      }
+
+      case 'addTranscriptChunk': {
+        // Insert a new transcript chunk into the database
+        if (!sessionId) {
+          return NextResponse.json(
+            { success: false, error: 'Session ID is required' },
+            { status: 400 }
+          );
+        }
+
+        if (!body.text || body.chunkOrder === undefined || !body.timestamp) {
+          return NextResponse.json(
+            { success: false, error: 'text, chunkOrder, and timestamp are required' },
+            { status: 400 }
+          );
+        }
+
+        // Verify session exists
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError || !sessionData) {
+          return NextResponse.json(
+            { success: false, error: 'Session not found' },
+            { status: 404 }
+          );
+        }
+
+        // Insert transcript chunk
+        const { error: chunkError } = await supabase.from('transcript_chunks').insert({
+          session_id: sessionId,
+          text: body.text,
+          chunk_order: body.chunkOrder,
+          timestamp: body.timestamp,
+        });
+
+        if (chunkError) {
+          console.error('Error inserting transcript chunk:', chunkError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to save transcript chunk' },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
         });
       }
 
       case 'end': {
-        // End a session
+        // Update session with end_time
         if (!sessionId) {
           return NextResponse.json(
             { success: false, error: 'Session ID is required' },
@@ -86,12 +217,15 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const session = sessions.get(sessionId);
-        
-        // If session not found in server storage, still return success
-        // The client has all the session data needed for the summary
-        // This handles cases where server state was lost (hot reload, stateless API routes)
-        if (!session) {
+        const endTime = new Date().toISOString();
+        const { error: updateError } = await supabase
+          .from('sessions')
+          .update({ end_time: endTime })
+          .eq('id', sessionId);
+
+        if (updateError) {
+          console.error('Error ending session:', updateError);
+          // Still return success - session might not exist, but client has data
           return NextResponse.json({
             success: true,
             sessionData: {
@@ -103,27 +237,17 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Mark session as ended
-        session.endTime = Date.now();
-
-        // Calculate final average stress score
-        const stressSignals = session.signals.filter((s) => s.type === 'stress');
-        if (stressSignals.length > 0) {
-          const avgStress =
-            stressSignals.reduce((sum, s) => sum + s.intensity, 0) / stressSignals.length;
-          session.averageStressScore = Math.round(avgStress);
-        }
-
-        sessions.set(sessionId, session);
+        // Fetch session data with all signals and chunks
+        const sessionData = await fetchSessionData(supabase, sessionId);
 
         return NextResponse.json({
           success: true,
-          sessionData: session,
+          sessionData,
         });
       }
 
       case 'get': {
-        // Get session data
+        // Get session data with all associated signals and transcript chunks
         if (!sessionId) {
           return NextResponse.json(
             { success: false, error: 'Session ID is required' },
@@ -131,8 +255,9 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const session = sessions.get(sessionId);
-        if (!session) {
+        const sessionData = await fetchSessionData(supabase, sessionId);
+
+        if (!sessionData) {
           return NextResponse.json(
             { success: false, error: 'Session not found' },
             { status: 404 }
@@ -141,7 +266,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          sessionData: session,
+          sessionData,
         });
       }
 
@@ -161,6 +286,79 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Helper function to fetch session data with signals and transcript chunks
+ */
+async function fetchSessionData(
+  supabase: ReturnType<typeof createSupabaseClient>,
+  sessionId: string
+): Promise<SessionData | null> {
+  // Fetch session
+  const { data: session, error: sessionError } = await supabase
+    .from('sessions')
+    .select('id, start_time, end_time')
+    .eq('id', sessionId)
+    .single();
+
+  if (sessionError || !session) {
+    return null;
+  }
+
+  // Fetch all signals for this session
+  const { data: signals, error: signalsError } = await supabase
+    .from('signals')
+    .select('type, intensity, timestamp')
+    .eq('session_id', sessionId)
+    .order('timestamp', { ascending: true });
+
+  if (signalsError) {
+    console.error('Error fetching signals:', signalsError);
+  }
+
+  // Fetch all transcript chunks for this session
+  const { data: chunks, error: chunksError } = await supabase
+    .from('transcript_chunks')
+    .select('text, chunk_order, timestamp')
+    .eq('session_id', sessionId)
+    .order('chunk_order', { ascending: true });
+
+  if (chunksError) {
+    console.error('Error fetching transcript chunks:', chunksError);
+  }
+
+  // Convert signals to BehavioralSignal format
+  const behavioralSignals: BehavioralSignal[] =
+    signals?.map((s) => ({
+      type: s.type as BehavioralSignal['type'],
+      intensity: s.intensity,
+      timestamp: Number(s.timestamp),
+    })) || [];
+
+  // Calculate average stress score
+  const stressSignals = behavioralSignals.filter((s) => s.type === 'stress');
+  const averageStressScore =
+    stressSignals.length > 0
+      ? Math.round(stressSignals.reduce((sum, s) => sum + s.intensity, 0) / stressSignals.length)
+      : undefined;
+
+  // Convert chunks to TranscriptChunk format
+  const transcriptChunks: TranscriptChunk[] =
+    chunks?.map((c) => ({
+      text: c.text,
+      chunkOrder: c.chunk_order,
+      timestamp: Number(c.timestamp),
+    })) || [];
+
+  return {
+    id: session.id,
+    startTime: new Date(session.start_time).getTime(),
+    endTime: session.end_time ? new Date(session.end_time).getTime() : undefined,
+    signals: behavioralSignals,
+    averageStressScore,
+    transcriptChunks,
+  };
+}
+
+/**
  * GET /api/session?sessionId=...
  * Get session data
  */
@@ -176,8 +374,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const session = sessions.get(sessionId);
-    if (!session) {
+    const supabase = createSupabaseClient();
+    const sessionData = await fetchSessionData(supabase, sessionId);
+
+    if (!sessionData) {
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
@@ -186,7 +386,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      sessionData: session,
+      sessionData,
     });
   } catch (error) {
     console.error('Session API error:', error);

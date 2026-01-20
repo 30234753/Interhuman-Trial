@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createClient, LiveTranscriptionEvents, LiveClient } from '@deepgram/sdk';
+import { useSession } from '../lib/session-context';
 
 export interface SubtitlesProps {
   enabled?: boolean;
@@ -9,8 +11,8 @@ export interface SubtitlesProps {
 }
 
 /**
- * Real-time subtitles component using Web Speech API
- * Displays transcribed speech from the microphone stream
+ * Real-time subtitles component using Deepgram live transcription
+ * Displays transcribed speech from the microphone stream via client-side Deepgram WebSocket integration
  */
 export default function Subtitles({
   enabled = true,
@@ -18,209 +20,350 @@ export default function Subtitles({
   className = '',
 }: SubtitlesProps) {
   const [transcript, setTranscript] = useState<string>('');
+  const [finalTranscript, setFinalTranscript] = useState<string>('');
+  const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const recognitionRef = useRef<any>(null);
+  
+  // Session context for saving transcript chunks
+  const { sessionState, addTranscriptChunk } = useSession();
+  
+  // Refs for MediaRecorder and transcription session
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const transcriptionSessionIdRef = useRef<string | null>(null);
+  const finalTranscriptRef = useRef<string>('');
   const interimTranscriptRef = useRef<string>('');
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 5;
+  const deepgramConnectionRef = useRef<LiveClient | null>(null);
+  const sendAudioChunkRef = useRef<((audioBlob: Blob, sessionId: string) => Promise<void>) | null>(null);
+  const isListeningRef = useRef<boolean>(false);
+  const chunkOrderRef = useRef<number>(0);
+  const lastSessionIdRef = useRef<string | null>(null);
 
-  // Initialize Speech Recognition
+  // Generate unique session ID for transcription
+  const generateSessionId = useCallback(() => {
+    return `transcription-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }, []);
+
+  // Handle transcript updates (interim and final)
+  const handleTranscript = useCallback((text: string, isFinal: boolean) => {
+    if (isFinal) {
+      // Add to final transcript
+      const updatedFinal = finalTranscriptRef.current + (finalTranscriptRef.current ? ' ' : '') + text;
+      finalTranscriptRef.current = updatedFinal;
+      setFinalTranscript(updatedFinal);
+      // Clear interim when we get a final result
+      interimTranscriptRef.current = '';
+      setInterimTranscript('');
+      
+      // Save transcript chunk to database if session is active
+      if (sessionState.isActive && sessionState.sessionId && text.trim()) {
+        const chunkOrder = chunkOrderRef.current++;
+        const timestamp = Date.now();
+        addTranscriptChunk(text.trim(), chunkOrder, timestamp).catch((error) => {
+          console.error('[Subtitles] Error saving transcript chunk:', error);
+        });
+      }
+    } else {
+      // Update interim transcript
+      interimTranscriptRef.current = text;
+      setInterimTranscript(text);
+    }
+
+    // Update combined display: final transcript + interim transcript
+    const display = finalTranscriptRef.current + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
+    // Limit to last 200 characters to prevent overflow
+    setTranscript(display.slice(-200));
+  }, [sessionState.isActive, sessionState.sessionId, addTranscriptChunk]);
+
+  // Start transcription session and connect directly to Deepgram WebSocket
+  const startTranscriptionSession = useCallback(async (sessionId: string) => {
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
+      if (!apiKey) {
+        throw new Error('NEXT_PUBLIC_DEEPGRAM_API_KEY is not set. Please add it to your .env.local file.');
+      }
+
+      console.log('[Subtitles] Creating client-side Deepgram WebSocket connection...');
+      
+      // Create Deepgram client
+      const deepgram = createClient(apiKey);
+
+      // Deepgram configuration matching the API URL parameters
+      // Reduced utteranceEndMs from 2000 to 500ms for faster results
+      // Lower endpointing (30ms) for more frequent interim updates
+      const connectionConfig = {
+        model: 'nova-3',
+        language: 'en',
+        smartFormat: false,
+        interimResults: true,
+        punctuate: true,
+        endpointing: 30, // Reduced from 100 for more frequent interim results
+        utteranceEndMs: 500, // Reduced from 2000ms to 500ms for faster finalization
+        vadEvents: true,
+        mipOptOut: true,
+      };
+
+      // Create live WebSocket connection directly to Deepgram
+      const connection = deepgram.listen.live(connectionConfig);
+      deepgramConnectionRef.current = connection;
+
+      // Set up event handlers
+      connection.on(LiveTranscriptionEvents.Open, () => {
+        console.log('[Subtitles] Deepgram WebSocket connection opened');
+        isListeningRef.current = true; // Update ref immediately so audio chunks can be sent
+        setIsListening(true);
+        setError(null);
+        reconnectAttemptsRef.current = 0;
+      });
+
+      connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+        try {
+          const transcript = data.channel?.alternatives?.[0]?.transcript || '';
+          const isFinal = data.is_final || false;
+          
+          if (transcript) {
+            handleTranscript(transcript, isFinal);
+          }
+        } catch (error) {
+          console.error('[Subtitles] Error parsing transcript:', error);
+        }
+      });
+
+      connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+        console.error('[Subtitles] Deepgram WebSocket error:', error);
+        setError(error?.message || 'Deepgram connection error');
+        isListeningRef.current = false; // Update ref when connection errors
+        setIsListening(false);
+        
+        // Attempt reconnection
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++;
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (transcriptionSessionIdRef.current) {
+              startTranscriptionSession(transcriptionSessionIdRef.current);
+            }
+          }, 1000 * reconnectAttemptsRef.current);
+        } else {
+          setError('Failed to connect to Deepgram after multiple attempts');
+        }
+      });
+
+      connection.on(LiveTranscriptionEvents.Close, () => {
+        console.log('[Subtitles] Deepgram WebSocket connection closed');
+        isListeningRef.current = false; // Update ref when connection closes
+        setIsListening(false);
+        deepgramConnectionRef.current = null;
+      });
+
+    } catch (error) {
+      console.error('[Subtitles] Error starting transcription session:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start transcription');
+      setIsListening(false);
+    }
+  }, [handleTranscript]);
+
+  // Send audio chunk directly to Deepgram WebSocket (client-side)
+  const sendAudioChunk = useCallback(async (audioBlob: Blob, sessionId: string) => {
+    try {
+      // Don't send audio if transcription session is not active or connection is not available
+      if (!isListening || !sessionId || !deepgramConnectionRef.current) {
+        return;
+      }
+
+      // Convert blob to ArrayBuffer for Deepgram WebSocket
+      const arrayBuffer = await audioBlob.arrayBuffer();
+
+      // Send audio directly to Deepgram WebSocket connection
+      deepgramConnectionRef.current.send(arrayBuffer);
+      
+      console.debug('[Subtitles] Audio chunk sent to Deepgram WebSocket:', {
+        size: arrayBuffer.byteLength,
+        sessionId,
+      });
+    } catch (error) {
+      console.error('[Subtitles] Error sending audio chunk to Deepgram:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send audio to Deepgram');
+    }
+  }, [isListening]);
+
+  // Update ref whenever sendAudioChunk changes
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:27',message:'Effect running - initializing recognition',data:{enabled,hasStream:!!stream,streamActive:stream?.active},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    sendAudioChunkRef.current = sendAudioChunk;
+  }, [sendAudioChunk]);
 
-    // Check if Speech Recognition API is available
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      setError('Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+  // Stop transcription session - close Deepgram WebSocket connection directly
+  const stopTranscriptionSession = useCallback(async (sessionId: string) => {
+    try {
+      if (deepgramConnectionRef.current) {
+        // Close the Deepgram WebSocket connection directly
+        deepgramConnectionRef.current.finish();
+        deepgramConnectionRef.current = null;
+        console.log('[Subtitles] Deepgram WebSocket connection closed');
+      }
+    } catch (error) {
+      console.error('[Subtitles] Error stopping transcription session:', error);
+    }
+  }, []);
+
+  // Initialize MediaRecorder and start transcription
+  useEffect(() => {
+    if (!enabled || !stream || !stream.active) {
       return;
     }
 
-    // Create recognition instance
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true; // Keep listening continuously
-    recognition.interimResults = true; // Show interim results
-    recognition.lang = 'en-US'; // Set language to English
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:38',message:'Recognition instance created',data:{hasExistingInstance:!!recognitionRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
-    recognition.onstart = () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:42',message:'Recognition started',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      setIsListening(true);
-      setError(null);
-    };
-
-    recognition.onresult = (event: any) => {
-      // #region agent log
-      const allResults = [];
-      for (let i = 0; i < event.results.length; i++) {
-        allResults.push({
-          index: i,
-          transcript: event.results[i][0].transcript,
-          isFinal: event.results[i].isFinal,
-          confidence: event.results[i][0].confidence
-        });
-      }
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:47',message:'onresult fired',data:{resultIndex:event.resultIndex,totalResults:event.results.length,allResults,currentTranscript:transcript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
-      // Build complete transcript from ALL final results (rebuild from scratch to avoid duplicates)
-      // This ensures we never duplicate - we always rebuild the complete state
-      let completeFinalTranscript = '';
-      let latestInterimTranscript = '';
-
-      // Process ALL results to rebuild complete state
-      // This approach avoids duplication because we rebuild from scratch each time
-      for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          // Add all final results to build complete final transcript
-          completeFinalTranscript += result + ' ';
-        } else {
-          // Track the latest interim result (the last non-final result in the array)
-          // This is what's currently being spoken/recognized
-          latestInterimTranscript = result;
-        }
-      }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:59',message:'Processed results',data:{completeFinalTranscript,latestInterimTranscript,hasFinal:!!completeFinalTranscript,hasInterim:!!latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
-      // Update interim transcript ref with latest interim only
-      interimTranscriptRef.current = latestInterimTranscript;
-
-      // Always rebuild the transcript from all final results (prevents duplication)
-      // Display: complete final transcript + latest interim
-      setTranscript(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:66',message:'Rebuilding transcript from all final results',data:{completeFinalTranscript,latestInterimTranscript,display:completeFinalTranscript + latestInterimTranscript},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        // Rebuild from scratch: all final results + latest interim
-        const display = completeFinalTranscript + latestInterimTranscript;
-        // Limit to last 200 characters to prevent overflow
-        return display.slice(-200);
-      });
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      
-      let errorMessage = 'Speech recognition error';
-      switch (event.error) {
-        case 'no-speech':
-          // Don't show error for no-speech, it's normal when user is silent
-          return;
-        case 'audio-capture':
-          errorMessage = 'No microphone found or microphone access denied';
-          break;
-        case 'not-allowed':
-          errorMessage = 'Microphone permission denied';
-          break;
-        case 'network':
-          errorMessage = 'Network error with speech recognition service';
-          break;
-        case 'service-not-allowed':
-          errorMessage = 'Speech recognition service not allowed';
-          break;
-        default:
-          errorMessage = `Speech recognition error: ${event.error}`;
-      }
-      
-      setError(errorMessage);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      
-      // Auto-restart if enabled and stream is still active
-      if (enabled && stream && stream.active) {
-        try {
-          recognition.start();
-        } catch (e) {
-          // Recognition might already be starting, ignore
-          console.debug('Recognition restart:', e);
-        }
-      }
-    };
-
-    recognitionRef.current = recognition;
-
-    // Start recognition if enabled and stream is available
-    if (enabled && stream && stream.active) {
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:127',message:'Starting recognition on init',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognition.start();
-      } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:130',message:'Failed to start recognition',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        console.error('Failed to start speech recognition:', e);
-      }
+    // Check if MediaRecorder is supported
+    if (!window.MediaRecorder) {
+      setError('MediaRecorder is not supported in this browser');
+      return;
     }
 
-    // Cleanup on unmount
+    // Check if stream has audio tracks
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      setError('No audio tracks found in stream');
+      return;
+    }
+
+    let mediaRecorder: MediaRecorder | null = null;
+    let sessionId: string | null = null;
+
+    const initializeTranscription = async () => {
+      try {
+        // Generate session ID
+        sessionId = generateSessionId();
+        transcriptionSessionIdRef.current = sessionId;
+
+        // Create MediaRecorder FIRST, before starting transcription session
+        // This ensures we can start sending audio immediately when the Deepgram connection opens
+
+        // Create MediaRecorder - extract audio-only stream if stream has video tracks
+        // Some browsers fail when using audio-only MIME types with streams that have video tracks
+        const audioTracksForRecording = stream.getAudioTracks();
+        const videoTracks = stream.getVideoTracks();
+        
+        // If stream has video tracks, create audio-only stream for MediaRecorder
+        // This prevents issues with browsers that reject audio-only MIME types on video streams
+        const streamForRecording = videoTracks.length > 0
+          ? new MediaStream(audioTracksForRecording) // Audio-only stream
+          : stream; // Use original stream if it's already audio-only
+
+        // Try audio-only MIME types first
+        let mimeType: string | undefined;
+        const audioOnlyTypes = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/ogg;codecs=opus',
+          'audio/ogg',
+        ];
+        
+        for (const type of audioOnlyTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            mimeType = type;
+            break;
+          }
+        }
+        
+        // If no audio-only type is supported, try video types (which include audio)
+        // This is a fallback for browsers that don't support audio-only recording
+        if (!mimeType) {
+          const videoTypes = [
+            'video/webm;codecs=vp8,opus',
+            'video/webm;codecs=vp9,opus',
+            'video/webm',
+          ];
+          for (const type of videoTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+              mimeType = type;
+              break;
+            }
+          }
+        }
+
+        // Create MediaRecorder options
+        const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
+        
+        // Only set audioBitsPerSecond for audio-only MIME types
+        if (mimeType && mimeType.startsWith('audio/')) {
+          recorderOptions.audioBitsPerSecond = 128000; // 128 kbps for good quality
+        }
+
+        mediaRecorder = new MediaRecorder(streamForRecording, recorderOptions);
+        mediaRecorderRef.current = mediaRecorder;
+
+        // Handle data available events (send chunks every 1-2 seconds)
+        // Use the component-level isListeningRef to check if connection is ready
+        mediaRecorder.ondataavailable = async (event) => {
+          if (event.data.size > 0 && sessionId && isListeningRef.current && sendAudioChunkRef.current) {
+            await sendAudioChunkRef.current(event.data, sessionId);
+          }
+        };
+
+        mediaRecorder.onerror = (event) => {
+          console.error('[Subtitles] MediaRecorder error:', event);
+          setError('Error capturing audio');
+          setIsListening(false);
+        };
+
+        // Start recording with timeslice of 1000ms (1 second chunks)
+        // Start MediaRecorder BEFORE starting transcription session to ensure audio flows immediately
+        mediaRecorder.start(1000);
+
+        // NOW start transcription session - MediaRecorder is already running and will send audio immediately
+        await startTranscriptionSession(sessionId);
+      } catch (error) {
+        console.error('[Subtitles] Error initializing transcription:', error);
+        setError(error instanceof Error ? error.message : 'Failed to initialize transcription');
+        setIsListening(false);
+      }
+    };
+
+    initializeTranscription();
+
+    // Cleanup function
     return () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:134',message:'Cleanup - stopping recognition',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      if (recognitionRef.current) {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         try {
-          recognitionRef.current.stop();
+          mediaRecorder.stop();
         } catch (e) {
-          // Ignore errors during cleanup
+          console.debug('[Subtitles] Error stopping MediaRecorder:', e);
         }
-        recognitionRef.current = null;
       }
+
+      if (sessionId) {
+        stopTranscriptionSession(sessionId);
+      }
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      mediaRecorderRef.current = null;
+      transcriptionSessionIdRef.current = null;
+      isListeningRef.current = false; // Update ref on cleanup
+      setIsListening(false);
     };
-  }, [enabled, stream]);
+  }, [enabled, stream, generateSessionId, startTranscriptionSession, stopTranscriptionSession]);
 
-  // Handle stream changes
+  // Reset chunk order when session changes
   useEffect(() => {
-    if (!recognitionRef.current) return;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:147',message:'Stream change effect',data:{enabled,hasStream:!!stream,streamActive:stream?.active,isListening},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
-    if (enabled && stream && stream.active && !isListening) {
-      // Start recognition when stream becomes active
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:152',message:'Starting recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognitionRef.current.start();
-      } catch (e) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:155',message:'Failed to start from stream change',data:{error:e instanceof Error?e.message:String(e)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        console.debug('Recognition start:', e);
-      }
-    } else if ((!enabled || !stream || !stream.active) && isListening) {
-      // Stop recognition when stream stops or is disabled
-      try {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Subtitles.tsx:161',message:'Stopping recognition from stream change',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.debug('Recognition stop:', e);
-      }
+    if (sessionState.sessionId !== lastSessionIdRef.current) {
+      // Session changed - reset chunk order
+      chunkOrderRef.current = 0;
+      lastSessionIdRef.current = sessionState.sessionId;
     }
-  }, [enabled, stream, isListening]);
+  }, [sessionState.sessionId]);
 
   // Clear transcript when stream stops
   useEffect(() => {
     if (!stream || !stream.active) {
       setTranscript('');
+      setFinalTranscript('');
+      setInterimTranscript('');
+      finalTranscriptRef.current = '';
       interimTranscriptRef.current = '';
     }
   }, [stream]);
@@ -228,6 +371,9 @@ export default function Subtitles({
   // Clear transcript manually
   const clearTranscript = useCallback(() => {
     setTranscript('');
+    setFinalTranscript('');
+    setInterimTranscript('');
+    finalTranscriptRef.current = '';
     interimTranscriptRef.current = '';
   }, []);
 
@@ -244,10 +390,12 @@ export default function Subtitles({
           <div className="flex-1 min-w-0">
             {transcript ? (
               <p className="text-white text-sm md:text-base font-medium leading-relaxed break-words">
-                {transcript}
-                {interimTranscriptRef.current && (
+                {finalTranscript && (
+                  <span>{finalTranscript}</span>
+                )}
+                {interimTranscript && (
                   <span className="text-orange-300/70 italic">
-                    {interimTranscriptRef.current}
+                    {' ' + interimTranscript}
                   </span>
                 )}
               </p>
@@ -319,4 +467,3 @@ export default function Subtitles({
     </div>
   );
 }
-

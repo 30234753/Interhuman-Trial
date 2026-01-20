@@ -16,12 +16,19 @@ export interface InterhumanAPIResponse {
   };
 }
 
+export interface TranscriptChunk {
+  text: string;
+  chunkOrder: number;
+  timestamp: number; // Unix timestamp in milliseconds
+}
+
 export interface SessionData {
   id: string;
   startTime: number;
   endTime?: number;
   signals: BehavioralSignal[];
   averageStressScore?: number;
+  transcriptChunks?: TranscriptChunk[];
 }
 
 export interface SessionState {

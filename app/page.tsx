@@ -101,6 +101,14 @@ export default function Home() {
           <p className="text-gray-400 text-sm md:text-base mt-2">
             Real-time behavioural analysis powered by AI
           </p>
+          <div className="mt-4">
+            <a
+              href="/test-transcription"
+              className="inline-block px-4 py-2 text-sm bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg text-blue-300 hover:text-blue-200 transition-colors"
+            >
+              Test Transcription →
+            </a>
+          </div>
         </div>
         
         {/* Session Controls */}
