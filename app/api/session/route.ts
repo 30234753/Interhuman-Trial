@@ -90,17 +90,83 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Insert signals in batch
-        const signalsToInsert = body.signals.map((signal: BehavioralSignal) => ({
-          session_id: sessionId,
-          type: signal.type,
-          intensity: signal.intensity,
-          timestamp: signal.timestamp,
-        }));
-
-        const { error: signalsError } = await supabase
+        // Check for existing signals to prevent duplicates
+        // Get min and max timestamps from incoming signals
+        const timestamps = body.signals.map((s: BehavioralSignal) => s.timestamp);
+        const minTimestamp = Math.min(...timestamps) - 100;
+        const maxTimestamp = Math.max(...timestamps) + 100;
+        
+        // Fetch existing signals in the timestamp range for this session
+        const { data: existingSignals } = await supabase
           .from('signals')
-          .insert(signalsToInsert);
+          .select('type, timestamp')
+          .eq('session_id', sessionId)
+          .gte('timestamp', minTimestamp)
+          .lte('timestamp', maxTimestamp);
+        
+        // Create a set of existing signal keys (type-timestamp within 100ms)
+        const existingSignalsSet = new Set<string>();
+        if (existingSignals) {
+          body.signals.forEach((signal: BehavioralSignal) => {
+            const exists = existingSignals.some((existing) => 
+              existing.type === signal.type &&
+              Math.abs(existing.timestamp - signal.timestamp) <= 100
+            );
+            if (exists) {
+              existingSignalsSet.add(`${signal.type}-${signal.timestamp}`);
+            }
+          });
+        }
+
+        // Filter out signals that already exist
+        const signalsToInsert = body.signals
+          .filter((signal: BehavioralSignal) => {
+            const key = `${signal.type}-${signal.timestamp}`;
+            return !existingSignalsSet.has(key);
+          })
+          .map((signal: BehavioralSignal) => ({
+            session_id: sessionId,
+            type: signal.type,
+            intensity: signal.intensity,
+            timestamp: signal.timestamp,
+          }));
+
+        // #region agent log
+        const fs = require('fs');
+        const logPath = 'c:\\Users\\adamj\\RealTalkStudio\\Cursor\\Projects\\Inhuman-Trial\\.cursor\\debug.log';
+        const logEntry = JSON.stringify({location:'route.ts:94',message:'Inserting signals to database (with deduplication)',data:{originalSignalsCount:body.signals.length,signalsToInsertCount:signalsToInsert.length,filteredOutCount:body.signals.length-signalsToInsert.length,signalsToInsert:signalsToInsert.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})+'\n';
+        try { fs.appendFileSync(logPath, logEntry); } catch(e) {}
+        // #endregion
+
+        // Only insert if there are signals to insert
+        if (signalsToInsert.length > 0) {
+          const { error: signalsError } = await supabase
+            .from('signals')
+            .insert(signalsToInsert);
+          
+          // #region agent log
+          const logEntry2 = JSON.stringify({location:'route.ts:103',message:'Database insert result',data:{signalsInsertedCount:signalsToInsert.length,error:signalsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})+'\n';
+          try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
+          // #endregion
+
+          if (signalsError) {
+            console.error('Error inserting signals:', signalsError);
+            return NextResponse.json(
+              { success: false, error: 'Failed to update session with signals' },
+              { status: 500 }
+            );
+          }
+        } else {
+          // #region agent log
+          const logEntry2 = JSON.stringify({location:'route.ts:103',message:'Database insert skipped - all signals already exist',data:{signalsInsertedCount:0,error:null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})+'\n';
+          try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
+          // #endregion
+        }
+        
+        // #region agent log
+        const logEntry2 = JSON.stringify({location:'route.ts:103',message:'Database insert result',data:{signalsInsertedCount:signalsToInsert.length,error:signalsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})+'\n';
+        try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
+        // #endregion
 
         if (signalsError) {
           console.error('Error inserting signals:', signalsError);
@@ -116,6 +182,11 @@ export async function POST(request: NextRequest) {
           .select('type, intensity, timestamp')
           .eq('session_id', sessionId)
           .order('timestamp', { ascending: true });
+        
+        // #region agent log
+        const logEntry3 = JSON.stringify({location:'route.ts:118',message:'Fetched all signals from database',data:{allSignalsCount:allSignals?.length||0,allSignals:allSignals?.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp}))||[],error:fetchError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'G'})+'\n';
+        try { fs.appendFileSync(logPath, logEntry3); } catch(e) {}
+        // #endregion
 
         if (fetchError) {
           console.error('Error fetching signals:', fetchError);

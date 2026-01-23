@@ -113,29 +113,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [sessionState]);
 
   const updateSignals = useCallback((signals: BehavioralSignal[]) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'session-context.tsx:115',message:'updateSignals called',data:{newSignalsCount:signals.length,newSignals:signals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),isActive:sessionState.isActive,sessionId:sessionState.sessionId,currentStateSignalsCount:sessionState.signals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!sessionState.isActive || !sessionState.sessionId) {
       return;
     }
 
+    // Update session on server asynchronously BEFORE state update to prevent duplicates
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'session-context.tsx:124',message:'Sending signals to API (before state update)',data:{signalsToSendCount:signals.length,signalsToSend:signals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionId:sessionState.sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
+    fetch('/api/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'update',
+        sessionId: sessionState.sessionId,
+        signals: signals,
+      }),
+    }).catch((error) => {
+      // Silently handle errors - session updates are non-critical
+      // The client-side state is the source of truth
+      // Errors can occur during hot reloads when server state is lost
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'session-context.tsx:134',message:'API update error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+    });
+
     setSessionState((prev) => {
       const updatedSignals = [...prev.signals, ...signals];
-      
-      // Update session on server asynchronously
-      fetch('/api/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'update',
-          sessionId: prev.sessionId,
-          signals: signals,
-        }),
-      }).catch((error) => {
-        // Silently handle errors - session updates are non-critical
-        // The client-side state is the source of truth
-        // Errors can occur during hot reloads when server state is lost
-      });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'session-context.tsx:121',message:'State update - signals merged',data:{prevSignalsCount:prev.signals.length,newSignalsCount:signals.length,updatedSignalsCount:updatedSignals.length,newSignals:signals.map(s=>({type:s.type,timestamp:s.timestamp})),prevSignalsLast3:prev.signals.slice(-3).map(s=>({type:s.type,timestamp:s.timestamp}))},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
 
       return {
         ...prev,

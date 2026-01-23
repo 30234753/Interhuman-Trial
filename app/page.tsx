@@ -139,6 +139,9 @@ export default function Home() {
                 }}
                 onSignalsUpdate={(signals) => {
                   console.log('Signals updated:', signals);
+                  // #region agent log
+                  fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:140',message:'onSignalsUpdate handler called',data:{signalsCount:signals.length,signals:signals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionActive,currentStateSignalsCount:sessionState.signals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                  // #endregion
                   // Update session with signals if session is active
                   if (sessionActive) {
                     updateSignals(signals);
