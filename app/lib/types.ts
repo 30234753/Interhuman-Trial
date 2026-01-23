@@ -44,4 +44,3 @@ export interface Report {
   session_id: string;
   created_at: string;
 }
-
