@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
         // #region agent log
         const fs = require('fs');
         const logPath = 'c:\\Users\\adamj\\RealTalkStudio\\Cursor\\Projects\\Inhuman-Trial\\.cursor\\debug.log';
-        const logEntry = JSON.stringify({location:'route.ts:94',message:'Inserting signals to database (with deduplication)',data:{originalSignalsCount:body.signals.length,signalsToInsertCount:signalsToInsert.length,filteredOutCount:body.signals.length-signalsToInsert.length,signalsToInsert:signalsToInsert.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})+'\n';
+        const logEntry = JSON.stringify({location:'route.ts:94',message:'Inserting signals to database (with deduplication)',data:{originalSignalsCount:body.signals.length,signalsToInsertCount:signalsToInsert.length,filteredOutCount:body.signals.length-signalsToInsert.length,signalsToInsert:signalsToInsert.map((s: {type: string; intensity: number; timestamp: number}) => ({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionId},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'F'})+'\n';
         try { fs.appendFileSync(logPath, logEntry); } catch(e) {}
         // #endregion
 
