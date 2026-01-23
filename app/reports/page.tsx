@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 
 interface Report {
   id: string;
-  name: string;
   session_id: string;
   created_at: string;
+  rating?: number | null;
+  feedback?: string | null;
 }
 
 export default function ReportsPage() {
@@ -169,9 +170,9 @@ export default function ReportsPage() {
                       </div>
                     </div>
 
-                    {/* Report Name */}
+                    {/* Report ID / Session ID */}
                     <h3 
-                      className={`text-lg font-semibold bg-gradient-to-r ${gradient} bg-clip-text text-transparent mb-2 group-hover:scale-105 transition-transform line-clamp-2`}
+                      className={`text-lg font-semibold bg-gradient-to-r ${gradient} bg-clip-text text-transparent mb-2 group-hover:scale-105 transition-transform`}
                       style={{
                         backgroundImage: gradient.includes('realtalk-blue') ? 'linear-gradient(to right, #6164F0, #a855f7)' :
                                         gradient.includes('turquoise') ? 'linear-gradient(to right, #06b6d4, #22d3ee)' :
@@ -183,7 +184,7 @@ export default function ReportsPage() {
                         backgroundClip: 'text',
                         color: 'transparent',
                       }}>
-                      {report.name || 'Unnamed Report'}
+                      <span className="font-mono text-sm">{report.session_id}</span>
                     </h3>
 
                     {/* Report Metadata */}

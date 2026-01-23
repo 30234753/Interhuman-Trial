@@ -14,12 +14,13 @@ export default function TimelineReportPage() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reportName, setReportName] = useState('');
-  const [existingReport, setExistingReport] = useState<{ id: string; name: string; session_id: string; created_at: string } | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [existingReport, setExistingReport] = useState<{ id: string; session_id: string; created_at: string; rating?: number | null; feedback?: string | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string>('');
+  const [isLocked, setIsLocked] = useState(false);
 
   // Fetch session data and existing report
   useEffect(() => {
@@ -55,13 +56,26 @@ export default function TimelineReportPage() {
 
         setSessionData(sessionData_result.sessionData);
 
-        // Fetch existing report for this session
+        // Fetch session data (which now includes rating/feedback)
         const reportResponse = await fetch(`/api/reports?sessionId=${encodeURIComponent(sessionId)}`);
         const reportData = await reportResponse.json();
 
         if (reportResponse.ok && reportData.success && reportData.report) {
           setExistingReport(reportData.report);
-          setReportName(reportData.report.name);
+          setRating(reportData.report.rating ?? null);
+          setFeedback(reportData.report.feedback ?? '');
+          // Lock fields if rating or feedback already exists (has been submitted before)
+          setIsLocked(reportData.report.rating !== null || (reportData.report.feedback !== null && reportData.report.feedback.trim() !== ''));
+        } else {
+          // Even if no rating/feedback exists, we still have a session (report)
+          setExistingReport({
+            id: sessionId,
+            session_id: sessionId,
+            created_at: new Date().toISOString(),
+            rating: null,
+            feedback: null,
+          });
+          setIsLocked(false);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -74,15 +88,14 @@ export default function TimelineReportPage() {
     fetchData();
   }, [sessionId]);
 
-  // Handle save/update report
-  const handleSaveReport = async () => {
-    if (!reportName.trim()) {
-      setSaveError('Report name is required');
-      return;
-    }
+  const handleEdit = () => {
+    setIsLocked(false);
+    setSaveError(null);
+    setSaveSuccess(false);
+  };
 
+  const handleSubmitRatingAndFeedback = async () => {
     if (!sessionId) {
-      setSaveError('Session ID is missing');
       return;
     }
 
@@ -97,44 +110,34 @@ export default function TimelineReportPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: reportName.trim(),
           sessionId: sessionId,
+          rating: rating,
+          feedback: feedback,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save report');
+        throw new Error(data.error || 'Failed to save rating and feedback');
       }
 
-      setExistingReport(data.report);
+      setExistingReport(data.session);
+      setRating(data.session.rating ?? null);
+      setFeedback(data.session.feedback ?? '');
+      setIsLocked(true); // Lock fields after successful submission
       setSaveSuccess(true);
-      setIsEditing(false);
 
       // Clear success message after 3 seconds
       setTimeout(() => {
         setSaveSuccess(false);
       }, 3000);
     } catch (err) {
-      console.error('Error saving report:', err);
-      setSaveError(err instanceof Error ? err.message : 'Failed to save report');
+      console.error('Error saving rating and feedback:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save rating and feedback');
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setReportName(existingReport?.name || '');
-    setSaveError(null);
-    setSaveSuccess(false);
   };
 
   if (loading) {
@@ -233,88 +236,37 @@ export default function TimelineReportPage() {
           </div>
         </div>
 
-        {/* Report Name Section */}
-        <div className="mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <div className="glass-dark rounded-xl p-4 backdrop-blur-xl border border-gray-200">
-            {existingReport && !isEditing ? (
-              // Display existing report name with edit button
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-realtalk-blue mb-2">
-                    Report Name
-                  </label>
-                  <div className="px-4 py-2.5 bg-gradient-to-r from-realtalk-blue/10 to-purple-500/10 border-2 border-realtalk-blue/30 rounded-lg text-realtalk-blue font-semibold shadow-sm">
-                    {existingReport.name}
-                  </div>
-                </div>
-                <button
-                  onClick={handleEdit}
-                  className="px-5 py-2.5 bg-gradient-to-r from-realtalk-blue/30 to-purple-500/30 hover:from-realtalk-blue/40 hover:to-purple-500/40 border-2 border-realtalk-blue/40 rounded-lg text-realtalk-blue font-bold hover:text-purple-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap mt-6"
-                >
-                  Edit Name
-                </button>
-              </div>
-            ) : (
-              // Edit mode or create new report
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
-                <div className="flex-1">
-                  <label htmlFor="report-name" className="block text-sm font-semibold text-purple-400 mb-2">
-                    {existingReport ? 'Edit Report Name' : 'Save Report As'}
-                  </label>
-                  <input
-                    id="report-name"
-                    type="text"
-                    value={reportName}
-                    onChange={(e) => {
-                      setReportName(e.target.value);
-                      setSaveError(null);
-                      setSaveSuccess(false);
-                    }}
-                    placeholder="Enter report name..."
-                    className="w-full px-4 py-2.5 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 hover:border-realtalk-blue/40 focus:border-realtalk-blue rounded-lg text-realtalk-blue font-semibold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30 transition-all shadow-sm"
-                    disabled={saving}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  {existingReport && isEditing && (
-                    <button
-                      onClick={handleCancelEdit}
-                      disabled={saving}
-                      className="px-5 py-2.5 bg-gradient-to-r from-gray-200 to-gray-100 hover:from-gray-300 hover:to-gray-200 border-2 border-gray-400 rounded-lg text-gray-700 hover:text-gray-900 font-semibold transition-all shadow-sm hover:shadow-md whitespace-nowrap disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                  <button
-                    onClick={handleSaveReport}
-                    disabled={saving || !reportName.trim()}
-                    className="px-6 py-2.5 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-purple-600 hover:from-realtalk-blue hover:via-purple-500 hover:to-pink-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl whitespace-nowrap"
-                  >
-                    {saving ? 'Saving...' : existingReport ? 'Update Report' : 'Save Report'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Save Status Messages */}
-            {saveSuccess && (
-              <div className="mt-3 px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm">
-                ✓ Report {existingReport ? 'updated' : 'saved'} successfully!
-              </div>
-            )}
-            {saveError && (
-              <div className="mt-3 px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
-                ✗ {saveError}
-              </div>
-            )}
+        {/* Save Status Messages */}
+        {saveSuccess && (
+          <div className="mb-6 animate-fade-in-up px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm">
+            ✓ Rating and feedback saved successfully!
           </div>
-        </div>
+        )}
+        {saveError && (
+          <div className="mb-6 animate-fade-in-up px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+            ✗ {saveError}
+          </div>
+        )}
 
         {/* Timeline Report and Session Summary - Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           {/* Timeline Report - Left Column (2/3 width on large screens) */}
           <div className="lg:col-span-2">
-            <TimelineReport sessionData={sessionData} />
+            <TimelineReport 
+              sessionData={sessionData}
+              rating={rating}
+              feedback={feedback}
+              onRatingChange={(newRating) => {
+                setRating(newRating);
+              }}
+              onFeedbackChange={(newFeedback) => {
+                setFeedback(newFeedback);
+              }}
+              onSubmit={handleSubmitRatingAndFeedback}
+              onEdit={handleEdit}
+              isSubmitting={saving}
+              isLocked={isLocked}
+            />
           </div>
           
           {/* Session Summary - Right Column (1/3 width on large screens) */}

@@ -7,6 +7,14 @@ import { calculateConfidenceScore, getSignalStatistics } from '@/app/lib/signal-
 export interface TimelineReportProps {
   sessionData: SessionData;
   className?: string;
+  rating?: number | null;
+  feedback?: string | null;
+  onRatingChange?: (rating: number | null) => void;
+  onFeedbackChange?: (feedback: string) => void;
+  onSubmit?: () => void;
+  onEdit?: () => void;
+  isSubmitting?: boolean;
+  isLocked?: boolean;
 }
 
 /**
@@ -69,12 +77,48 @@ function formatDuration(ms: number): string {
 /**
  * Timeline visualization component showing confidence score over time and transcript chunks
  */
-export default function TimelineReport({ sessionData, className = '' }: TimelineReportProps) {
+export default function TimelineReport({ 
+  sessionData, 
+  className = '',
+  rating: externalRating,
+  feedback: externalFeedback,
+  onRatingChange,
+  onFeedbackChange,
+  onSubmit,
+  onEdit,
+  isSubmitting = false,
+  isLocked = false,
+}: TimelineReportProps) {
   const { signals, transcriptChunks = [], startTime, endTime } = sessionData;
   const sessionDuration = endTime ? endTime - startTime : Date.now() - startTime;
   
   // State for selected signal type
   const [selectedSignalType, setSelectedSignalType] = useState<string>('all');
+  
+  // Internal state for rating and feedback (used if not controlled externally)
+  const [internalRating, setInternalRating] = useState<number | null>(externalRating ?? null);
+  const [internalFeedback, setInternalFeedback] = useState<string>(externalFeedback ?? '');
+  
+  // Use external props if provided, otherwise use internal state
+  const rating = externalRating !== undefined ? externalRating : internalRating;
+  const feedback = externalFeedback !== undefined ? (externalFeedback ?? '') : internalFeedback;
+  
+  const handleRatingClick = (value: number) => {
+    const newRating = rating === value ? null : value;
+    if (onRatingChange) {
+      onRatingChange(newRating);
+    } else {
+      setInternalRating(newRating);
+    }
+  };
+  
+  const handleFeedbackChange = (value: string) => {
+    if (onFeedbackChange) {
+      onFeedbackChange(value);
+    } else {
+      setInternalFeedback(value);
+    }
+  };
 
   // Normalize timestamps relative to session start
   const normalizedSignals = useMemo(() => 
@@ -541,6 +585,92 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
           </div>
         )}
 
+      </div>
+
+      {/* Rating and Feedback Section */}
+      <div className="mt-8 pt-6 border-t border-gray-200/50">
+        <h3 className="text-lg font-semibold text-realtalk-blue mb-4">Rate System Accuracy</h3>
+        
+        {/* Star Rating */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            How accurate was the system? (1-5)
+          </label>
+          <div className="flex items-center gap-2">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => !isLocked && handleRatingClick(value)}
+                disabled={isLocked}
+                className={`transition-all transform ${
+                  isLocked ? 'cursor-not-allowed opacity-60' : 'hover:scale-110 cursor-pointer'
+                } ${
+                  rating && rating >= value
+                    ? 'text-yellow-400'
+                    : 'text-gray-300 hover:text-yellow-300'
+                }`}
+                aria-label={`Rate ${value} out of 5`}
+              >
+                <svg
+                  className="w-10 h-10"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              </button>
+            ))}
+            {rating && (
+              <span className="ml-3 text-sm font-semibold text-realtalk-blue">
+                {rating} / 5
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Feedback Text Box */}
+        <div className="mb-6">
+          <label htmlFor="feedback-input" className="block text-sm font-medium text-gray-700 mb-3">
+            Feedback (Optional)
+          </label>
+          <textarea
+            id="feedback-input"
+            value={feedback || ''}
+            onChange={(e) => !isLocked && handleFeedbackChange(e.target.value)}
+            disabled={isLocked}
+            placeholder="Share your thoughts about the system's accuracy..."
+            rows={4}
+            className={`w-full px-4 py-3 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 rounded-lg text-realtalk-blue font-medium placeholder-gray-400 transition-all shadow-sm resize-none ${
+              isLocked 
+                ? 'cursor-not-allowed opacity-60' 
+                : 'hover:border-realtalk-blue/40 focus:border-realtalk-blue focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30'
+            }`}
+          />
+        </div>
+
+        {/* Submit/Edit Button Bar */}
+        <div className="flex items-center justify-end pt-4 border-t border-gray-200/50">
+          {isLocked ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-6 py-3 bg-gradient-to-r from-realtalk-blue/30 to-purple-500/30 hover:from-realtalk-blue/40 hover:to-purple-500/40 border-2 border-realtalk-blue/40 rounded-lg text-realtalk-blue font-bold hover:text-purple-700 transition-all shadow-md hover:shadow-lg"
+            >
+              Edit Rating & Feedback
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="px-6 py-3 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-purple-600 hover:from-realtalk-blue hover:via-purple-500 hover:to-pink-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Rating & Feedback'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,37 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClient } from '@/app/lib/supabase';
-import { Report } from '@/app/lib/types';
 
 export const runtime = 'nodejs';
 
 /**
  * POST /api/reports
- * Create or update a saved report (upsert - one report per session)
+ * Update rating and feedback for a session
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, sessionId } = body;
+    const { sessionId, rating, feedback } = body;
 
     // Validate required fields
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Report name is required' },
-        { status: 400 }
-      );
-    }
-
     if (!sessionId || typeof sessionId !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Session ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate name length (reasonable limit)
-    if (name.trim().length > 255) {
-      return NextResponse.json(
-        { success: false, error: 'Report name must be 255 characters or less' },
         { status: 400 }
       );
     }
@@ -52,78 +36,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if report already exists for this session
-    const { data: existingReport, error: fetchError } = await supabase
-      .from('reports')
-      .select('id, name, session_id, created_at')
-      .eq('session_id', sessionId)
-      .single();
-
-    let reportData;
-    let operationError;
-
-    if (existingReport) {
-      // Update existing report
-      const { data: updatedData, error: updateError } = await supabase
-        .from('reports')
-        .update({
-          name: name.trim(),
-        })
-        .eq('id', existingReport.id)
-        .select('id, name, session_id, created_at')
-        .single();
-
-      reportData = updatedData;
-      operationError = updateError;
-    } else {
-      // Insert new report record
-      const { data: insertedData, error: insertError } = await supabase
-        .from('reports')
-        .insert({
-          name: name.trim(),
-          session_id: sessionId,
-        })
-        .select('id, name, session_id, created_at')
-        .single();
-
-      reportData = insertedData;
-      operationError = insertError;
-    }
-
-    if (operationError) {
-      console.error('Error saving report:', operationError);
-      
-      // Check if the error is due to missing table (migration not run)
-      if (operationError.code === 'PGRST205' || operationError.message?.includes("Could not find the table 'public.reports'")) {
+    // Update session with rating and feedback
+    const updateData: { rating?: number | null; feedback?: string | null } = {};
+    
+    // Only update rating/feedback if provided
+    if (rating !== undefined) {
+      updateData.rating = rating === null || rating === '' ? null : Number(rating);
+      // Validate rating is between 1-5 if provided
+      if (updateData.rating !== null && (updateData.rating < 1 || updateData.rating > 5)) {
         return NextResponse.json(
-          { success: false, error: 'Reports table not found. Please run the database migration (supabase-reports-migration.sql) in your Supabase SQL Editor.' },
-          { status: 500 }
+          { success: false, error: 'Rating must be between 1 and 5' },
+          { status: 400 }
         );
       }
-      
+    }
+    
+    if (feedback !== undefined) {
+      updateData.feedback = feedback === null || feedback === '' ? null : String(feedback).trim();
+    }
+    
+    const { data: updatedSession, error: updateError } = await supabase
+      .from('sessions')
+      .update(updateData)
+      .eq('id', sessionId)
+      .select('id, start_time, end_time, created_at, rating, feedback')
+      .single();
+
+    if (updateError) {
+      console.error('Error updating session:', updateError);
       return NextResponse.json(
-        { success: false, error: 'Failed to save report' },
+        { success: false, error: 'Failed to update session rating/feedback' },
         { status: 500 }
       );
     }
 
-    if (!reportData) {
+    if (!updatedSession) {
       return NextResponse.json(
-        { success: false, error: 'Failed to save report: no data returned' },
+        { success: false, error: 'Failed to update session: no data returned' },
         { status: 500 }
       );
     }
-
-    const report: Report = {
-      id: reportData.id,
-      name: reportData.name,
-      session_id: reportData.session_id,
-      created_at: reportData.created_at,
-    };
 
     return NextResponse.json({
       success: true,
-      report,
+      session: {
+        id: updatedSession.id,
+        session_id: updatedSession.id,
+        created_at: updatedSession.created_at,
+        rating: updatedSession.rating ?? null,
+        feedback: updatedSession.feedback ?? null,
+      },
     });
   } catch (error) {
     console.error('Reports API error:', error);
@@ -136,8 +98,8 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/reports
- * List all saved reports, or fetch a single report by sessionId
- * Query params: sessionId (optional) - if provided, returns single report for that session
+ * List all sessions (as reports), or fetch a single session by sessionId
+ * Query params: sessionId (optional) - if provided, returns single session for that sessionId
  */
 export async function GET(request: NextRequest) {
   try {
@@ -146,68 +108,68 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('sessionId');
 
     if (sessionId) {
-      // Fetch single report by sessionId
-      const { data: reportData, error: fetchError } = await supabase
-        .from('reports')
-        .select('id, name, session_id, created_at')
-        .eq('session_id', sessionId)
+      // Fetch single session by sessionId
+      const { data: sessionData, error: fetchError } = await supabase
+        .from('sessions')
+        .select('id, start_time, end_time, created_at, rating, feedback')
+        .eq('id', sessionId)
         .single();
 
       if (fetchError) {
-        // If no report found, return null (not an error)
+        // If no session found, return null (not an error)
         if (fetchError.code === 'PGRST116') {
           return NextResponse.json({
             success: true,
             report: null,
           });
         }
-        console.error('Error fetching report:', fetchError);
+        
+        console.error('Error fetching session:', fetchError);
         return NextResponse.json(
-          { success: false, error: 'Failed to fetch report' },
+          { success: false, error: 'Failed to fetch session' },
           { status: 500 }
         );
       }
 
-      if (!reportData) {
+      if (!sessionData) {
         return NextResponse.json({
           success: true,
           report: null,
         });
       }
 
-      const report: Report = {
-        id: reportData.id,
-        name: reportData.name,
-        session_id: reportData.session_id,
-        created_at: reportData.created_at,
-      };
-
       return NextResponse.json({
         success: true,
-        report,
+        report: {
+          id: sessionData.id,
+          session_id: sessionData.id,
+          created_at: sessionData.created_at,
+          rating: sessionData.rating ?? null,
+          feedback: sessionData.feedback ?? null,
+        },
       });
     } else {
-      // Fetch all reports ordered by created_at descending
-      const { data: reportsData, error: fetchError } = await supabase
-        .from('reports')
-        .select('id, name, session_id, created_at')
+      // Fetch all sessions ordered by created_at descending
+      const { data: sessionsData, error: fetchError } = await supabase
+        .from('sessions')
+        .select('id, start_time, end_time, created_at, rating, feedback')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
-        console.error('Error fetching reports:', fetchError);
+        console.error('Error fetching sessions:', fetchError);
         return NextResponse.json(
-          { success: false, error: 'Failed to fetch reports' },
+          { success: false, error: 'Failed to fetch sessions' },
           { status: 500 }
         );
       }
 
-      const reports: Report[] =
-        reportsData?.map((r) => ({
-          id: r.id,
-          name: r.name,
-          session_id: r.session_id,
-          created_at: r.created_at,
-        })) || [];
+      const reports = sessionsData?.map((s) => ({
+        id: s.id,
+        session_id: s.id,
+        created_at: s.created_at,
+        rating: s.rating ?? null,
+        feedback: s.feedback ?? null,
+      })) || [];
 
       return NextResponse.json({
         success: true,

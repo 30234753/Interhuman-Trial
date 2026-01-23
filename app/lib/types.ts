@@ -40,7 +40,8 @@ export interface SessionState {
 
 export interface Report {
   id: string;
-  name: string;
   session_id: string;
   created_at: string;
+  rating?: number | null;
+  feedback?: string | null;
 }
