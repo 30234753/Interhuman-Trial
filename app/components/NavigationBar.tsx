@@ -38,12 +38,22 @@ export default function NavigationBar() {
             <Link
               href="/"
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                isActive('/')
+                isActive('/') && pathname === '/'
                   ? 'bg-realtalk-blue/10 text-realtalk-blue border border-realtalk-blue/20'
                   : 'text-realtalk-blue/70 hover:text-realtalk-blue hover:bg-realtalk-blue/5'
               }`}
             >
-              Main Screen
+              Main Menu
+            </Link>
+            <Link
+              href="/trial"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                isActive('/trial')
+                  ? 'bg-realtalk-blue/10 text-realtalk-blue border border-realtalk-blue/20'
+                  : 'text-realtalk-blue/70 hover:text-realtalk-blue hover:bg-realtalk-blue/5'
+              }`}
+            >
+              Start Trial
             </Link>
             <Link
               href="/test-transcription"

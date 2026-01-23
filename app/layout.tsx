@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "./lib/session-context";
 import NavigationBar from "./components/NavigationBar";
-import ConsentModalWrapper from "./components/ConsentModalWrapper";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -25,7 +24,6 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <SessionProvider>
-          <ConsentModalWrapper />
           <NavigationBar />
           {children}
         </SessionProvider>
