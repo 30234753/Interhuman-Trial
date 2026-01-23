@@ -107,6 +107,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!reportData) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to save report: no data returned' },
+        { status: 500 }
+      );
+    }
+
     const report: Report = {
       id: reportData.id,
       name: reportData.name,
@@ -159,6 +166,13 @@ export async function GET(request: NextRequest) {
           { success: false, error: 'Failed to fetch report' },
           { status: 500 }
         );
+      }
+
+      if (!reportData) {
+        return NextResponse.json({
+          success: true,
+          report: null,
+        });
       }
 
       const report: Report = {
