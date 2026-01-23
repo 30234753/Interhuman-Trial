@@ -162,19 +162,6 @@ export async function POST(request: NextRequest) {
           try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
           // #endregion
         }
-        
-        // #region agent log
-        const logEntry2 = JSON.stringify({location:'route.ts:103',message:'Database insert result',data:{signalsInsertedCount:signalsToInsert.length,error:signalsError?.message||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})+'\n';
-        try { fs.appendFileSync(logPath, logEntry2); } catch(e) {}
-        // #endregion
-
-        if (signalsError) {
-          console.error('Error inserting signals:', signalsError);
-          return NextResponse.json(
-            { success: false, error: 'Failed to update session with signals' },
-            { status: 500 }
-          );
-        }
 
         // Fetch all signals for this session to calculate average stress score
         const { data: allSignals, error: fetchError } = await supabase
