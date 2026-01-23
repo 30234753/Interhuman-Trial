@@ -47,16 +47,7 @@ export default function NavigationBar() {
             >
               Test Transcription
             </Link>
-            <Link
-              href="/reports"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                isActive('/reports')
-                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                  : 'text-gray-300 hover:text-orange-400 hover:bg-white/5'
-              }`}
-            >
-              Saved Reports
-            </Link>
+
           </div>
         </div>
       </div>
