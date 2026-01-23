@@ -96,26 +96,26 @@ export default function SessionControls({
 
   const getStatusColor = () => {
     if (streamStatus.includes('Error')) return 'text-red-500';
-    if (streamStatus.includes('active')) return 'text-orange-400';
+    if (streamStatus.includes('active')) return 'text-realtalk-blue';
     if (streamStatus.includes('stopped')) return 'text-gray-400';
-    return 'text-orange-500';
+    return 'text-realtalk-blue';
   };
 
   return (
-    <div className={`glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-white/10 ${className}`}>
+    <div className={`glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-gray-200 ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* Session Status and Stream Status */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div
               className={`w-3 h-3 rounded-full ${
-                sessionState.isActive ? 'bg-orange-500 animate-pulse' : 'bg-gray-500'
+                sessionState.isActive ? 'bg-realtalk-blue animate-pulse' : 'bg-gray-400'
               }`}
             ></div>
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Session</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Session</p>
               <p className={`text-base md:text-lg font-semibold ${
-                sessionState.isActive ? 'text-orange-400' : 'text-gray-400'
+                sessionState.isActive ? 'text-realtalk-blue' : 'text-gray-500'
               }`}>
                 {sessionState.isActive ? 'Active' : 'Inactive'}
               </p>
@@ -126,7 +126,7 @@ export default function SessionControls({
           <div className="flex items-center gap-3">
             <div className={`w-2 h-2 rounded-full ${getStatusColor().replace('text-', 'bg-')} animate-pulse`}></div>
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider">Status</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Status</p>
               <p className={`text-base md:text-lg font-semibold ${getStatusColor()} transition-colors duration-300`}>
                 {streamStatus}
               </p>
@@ -134,11 +134,11 @@ export default function SessionControls({
           </div>
           
           {sessionState.isActive && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 backdrop-blur-sm rounded-full border border-orange-500/30">
-              <svg className="w-4 h-4 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-realtalk-blue/10 backdrop-blur-sm rounded-full border border-realtalk-blue/20">
+              <svg className="w-4 h-4 text-realtalk-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm font-medium text-orange-300">
+              <span className="text-sm font-medium text-realtalk-blue">
                 {formatDuration(duration)}
               </span>
             </div>
@@ -151,7 +151,11 @@ export default function SessionControls({
             <button
               onClick={handleStartSession}
               disabled={isLoading}
-              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-gradient-to-r from-realtalk-dark to-realtalk-blue hover:from-realtalk-blue hover:to-realtalk-light active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
+              style={{
+                backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0)',
+                color: '#ffffff',
+              }}
             >
               {isLoading ? (
                 <>
@@ -195,16 +199,16 @@ export default function SessionControls({
 
       {/* Session Info */}
       {sessionState.isActive && sessionState.sessionId && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider">Session ID:</span>
-              <span className="font-mono text-orange-300">{sessionState.sessionId}</span>
+              <span className="font-mono text-realtalk-blue">{sessionState.sessionId}</span>
             </div>
             {sessionState.signals.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs uppercase tracking-wider">Signals:</span>
-                <span className="text-orange-300 font-semibold">{sessionState.signals.length}</span>
+                <span className="text-realtalk-blue font-semibold">{sessionState.signals.length}</span>
               </div>
             )}
           </div>

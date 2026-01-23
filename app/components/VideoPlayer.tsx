@@ -650,11 +650,11 @@ export default function VideoPlayer({
 
       {/* Analysis status indicator */}
       {isAnalyzing && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 glass-dark px-4 py-2 rounded-full border border-blue-500/30 animate-scale-in shadow-lg" style={{ boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-black/90 backdrop-blur-md px-4 py-2 rounded-full border border-turquoise-500/50 animate-scale-in shadow-lg" style={{ boxShadow: '0 0 20px rgba(20, 184, 166, 0.4)' }}>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-400/30"></div>
-              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-blue-400 absolute top-0 left-0"></div>
+              <div className="animate-spin rounded-full h-3 w-3 border-2 border-turquoise-400/30"></div>
+              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-turquoise-400 absolute top-0 left-0"></div>
             </div>
             <span className="text-white text-xs font-semibold tracking-wide">Analyzing...</span>
           </div>

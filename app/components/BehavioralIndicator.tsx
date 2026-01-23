@@ -13,21 +13,21 @@ export interface BehavioralIndicatorProps {
 }
 
 /**
- * Color mapping for different behavioral signal types
+ * Color mapping for different behavioral signal types (distinct color palette)
  */
 const SIGNAL_COLORS: Record<BehavioralSignal['type'], string> = {
-  agreement: '#3b82f6', // blue-500
-  confidence: '#10b981', // emerald-500
-  confusion: '#f59e0b', // amber-500
-  disagreement: '#8b5cf6', // purple-500
-  disengagement: '#6b7280', // gray-500
-  engagement: '#22c55e', // green-500
-  frustration: '#f97316', // orange-500
-  hesitation: '#eab308', // yellow-500
-  interest: '#06b6d4', // cyan-500
-  skepticism: '#a855f7', // violet-500
-  stress: '#ef4444', // red-500
-  uncertainty: '#84cc16', // lime-500
+  stress: '#ef4444', // red-500 - stress/negative
+  engagement: '#06b6d4', // turquoise-500 - positive engagement
+  confusion: '#f59e0b', // amber-500 - confusion/warning
+  hesitation: '#8b5cf6', // purple-500 - hesitation/uncertainty
+  agreement: '#10b981', // emerald-500 - positive agreement
+  disagreement: '#f97316', // orange-500 - disagreement
+  disengagement: '#6b7280', // gray-500 - neutral disengagement
+  confidence: '#3b82f6', // blue-500 - confidence/positive
+  frustration: '#dc2626', // red-600 - frustration/negative
+  interest: '#eab308', // yellow-500 - interest/curiosity (distinct from engagement)
+  skepticism: '#a855f7', // purple-500 - skepticism
+  uncertainty: '#14b8a6', // teal-500 - uncertainty (distinct from engagement/interest)
 };
 
 /**

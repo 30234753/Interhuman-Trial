@@ -286,8 +286,8 @@ export default function VideoCapture({
         <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg z-20 animate-fade-in">
           <div className="text-white text-center">
             <div className="relative mx-auto mb-4">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500/20"></div>
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 absolute top-0 left-0"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-turquoise-500/20"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-turquoise-500 absolute top-0 left-0"></div>
             </div>
             <p className="text-lg font-medium">Accessing camera...</p>
             <p className="text-sm text-gray-400 mt-1">Please allow camera access when prompted</p>
@@ -305,7 +305,7 @@ export default function VideoCapture({
                 setError(null);
                 startStream();
               }}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+              className="px-6 py-3 bg-turquoise-600 hover:bg-turquoise-700 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             >
               Try Again
             </button>
@@ -333,8 +333,8 @@ export default function VideoCapture({
       {!isStreaming && !isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-sm rounded-lg animate-fade-in">
           <div className="flex flex-col items-center justify-center gap-8 text-white text-center px-4">
-            <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center border-2 border-blue-500/30">
-              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-20 h-20 rounded-full bg-turquoise-500/20 flex items-center justify-center border-2 border-turquoise-500/30">
+              <svg className="w-10 h-10 text-turquoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             </div>
@@ -343,7 +343,7 @@ export default function VideoCapture({
               onClick={() => {
                 startStream();
               }}
-              className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+              className="px-8 py-3.5 bg-gradient-to-r from-turquoise-600 to-turquoise-700 hover:from-turquoise-700 hover:to-turquoise-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

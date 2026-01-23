@@ -15,21 +15,21 @@ export interface SessionSummaryProps {
 }
 
 /**
- * Color mapping for different behavioral signal types (orange/black theme)
+ * Color mapping for different behavioral signal types (distinct color palette)
  */
 const SIGNAL_COLORS: Record<string, string> = {
-  stress: '#f97316', // orange-500
-  engagement: '#ea580c', // orange-600
-  confusion: '#fb923c', // orange-400
-  hesitation: '#fdba74', // orange-300
-  agreement: '#ff8c42', // orange variant
-  disagreement: '#c2410c', // orange-800
-  disengagement: '#9a3412', // orange-900
-  confidence: '#f97316', // orange-500
-  frustration: '#ea580c', // orange-600
-  interest: '#fb923c', // orange-400
-  skepticism: '#c2410c', // orange-800
-  uncertainty: '#fdba74', // orange-300
+  stress: '#ef4444', // red-500 - stress/negative
+  engagement: '#06b6d4', // turquoise-500 - positive engagement
+  confusion: '#f59e0b', // amber-500 - confusion/warning
+  hesitation: '#8b5cf6', // purple-500 - hesitation/uncertainty
+  agreement: '#10b981', // emerald-500 - positive agreement
+  disagreement: '#f97316', // orange-500 - disagreement
+  disengagement: '#6b7280', // gray-500 - neutral disengagement
+  confidence: '#3b82f6', // blue-500 - confidence/positive
+  frustration: '#dc2626', // red-600 - frustration/negative
+  interest: '#eab308', // yellow-500 - interest/curiosity (distinct from engagement)
+  skepticism: '#a855f7', // purple-500 - skepticism
+  uncertainty: '#14b8a6', // teal-500 - uncertainty (distinct from engagement/interest)
 };
 
 /**
@@ -142,16 +142,16 @@ function formatDuration(ms: number): string {
  */
 function getConfidenceCategory(score: number | null): { label: string; color: string; bgColor: string } {
   if (score === null) {
-    return { label: 'No Data', color: 'text-gray-400', bgColor: 'bg-gray-500/20' };
+    return { label: 'No Data', color: 'text-gray-500', bgColor: 'bg-gray-200/50' };
   }
   if (score >= 70) {
-    return { label: 'High', color: 'text-orange-300', bgColor: 'bg-orange-600/30' };
+    return { label: 'High', color: 'text-realtalk-blue', bgColor: 'bg-realtalk-blue/20' };
   } else if (score >= 50) {
-    return { label: 'Moderate', color: 'text-orange-400', bgColor: 'bg-orange-500/20' };
+    return { label: 'Moderate', color: 'text-realtalk-blue/80', bgColor: 'bg-realtalk-blue/15' };
   } else if (score >= 30) {
-    return { label: 'Low', color: 'text-orange-200', bgColor: 'bg-orange-400/10' };
+    return { label: 'Low', color: 'text-realtalk-blue/60', bgColor: 'bg-realtalk-blue/10' };
   } else {
-    return { label: 'Very Low', color: 'text-orange-100', bgColor: 'bg-orange-300/10' };
+    return { label: 'Very Low', color: 'text-realtalk-blue/50', bgColor: 'bg-realtalk-blue/5' };
   }
 }
 
@@ -188,17 +188,24 @@ export default function SessionSummary({
   const confidenceCategory = getConfidenceCategory(stats?.confidenceScore || null);
 
   return (
-    <div className={`glass-dark rounded-2xl p-4 md:p-5 backdrop-blur-xl border border-white/10 shadow-2xl h-full overflow-y-auto ${className} animate-fade-in-up`}>
+    <div className={`glass-dark rounded-2xl p-4 md:p-5 backdrop-blur-xl border border-gray-200 shadow-2xl h-full overflow-y-auto ${className} animate-fade-in-up`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
+          <h2 
+            className="text-xl md:text-2xl font-bold bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent"
+            style={{
+              backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}>
             Session Summary
             {isLive && (
-              <span className="ml-2 text-xs text-orange-400 font-normal">(Live)</span>
+              <span className="ml-2 text-xs text-realtalk-blue font-normal">(Live)</span>
             )}
           </h2>
-          <p className="text-gray-400 text-xs mt-0.5">
+          <p className="text-gray-500 text-xs mt-0.5">
             {isMounted ? (
               <>
                 {startTime ? new Date(startTime).toLocaleTimeString() : 'Not started'} - {hasData && isLive ? 'In progress...' : (startTime ? new Date(endTime).toLocaleTimeString() : 'N/A')}
@@ -212,7 +219,7 @@ export default function SessionSummary({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-orange-400"
+              className="p-1.5 hover:bg-realtalk-blue/10 rounded-lg transition-colors duration-200 text-gray-500 hover:text-realtalk-blue"
               aria-label="Close summary"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,20 +232,20 @@ export default function SessionSummary({
 
       {/* Confidence Score - Prominent Display */}
       <div className="mb-4">
-        <div className="glass-dark rounded-xl p-4 border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-black/50">
+        <div className="rounded-xl p-5 border-2 border-realtalk-blue/40 bg-gradient-to-br from-realtalk-blue/20 via-purple-500/15 to-turquoise-500/20 shadow-lg">
           <div className="flex flex-col gap-3">
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1.5">Confidence Score</p>
+              <p className="text-xs text-gray-700 uppercase tracking-wider mb-2 font-bold">Confidence Score</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl md:text-4xl font-bold text-orange-400">
+                <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-realtalk-blue via-purple-600 to-turquoise-500 bg-clip-text">
                   {stats?.confidenceScore ?? 'N/A'}
                 </span>
                 {stats?.confidenceScore != null && (
-                  <span className="text-lg text-gray-500">/ 100</span>
+                  <span className="text-lg text-gray-600 font-semibold">/ 100</span>
                 )}
               </div>
-              <div className="mt-2">
-                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${confidenceCategory.bgColor} ${confidenceCategory.color} border border-orange-500/30`}>
+              <div className="mt-3">
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${confidenceCategory.bgColor} ${confidenceCategory.color} border-2 border-realtalk-blue/40 shadow-sm`}>
                   {confidenceCategory.label} Confidence
                 </span>
               </div>
@@ -249,27 +256,27 @@ export default function SessionSummary({
 
       {/* Session Stats Grid */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="glass-dark rounded-lg p-2.5 border border-white/10">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Duration</p>
-          <p className="text-base font-bold text-orange-400">
+        <div className="rounded-lg p-3 border-2 border-turquoise-500/30 bg-gradient-to-br from-turquoise-500/15 to-cyan-500/10 shadow-sm">
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Duration</p>
+          <p className="text-base font-bold text-turquoise-600">
             {stats ? formatDuration(stats.duration) : 'N/A'}
           </p>
         </div>
-        <div className="glass-dark rounded-lg p-2.5 border border-white/10">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Signals</p>
-          <p className="text-base font-bold text-orange-400">
+        <div className="rounded-lg p-3 border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/15 to-pink-500/10 shadow-sm">
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Signals</p>
+          <p className="text-base font-bold text-purple-600">
             {stats ? stats.totalSignals : '0'}
           </p>
         </div>
-        <div className="glass-dark rounded-lg p-2.5 border border-white/10">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Types</p>
-          <p className="text-base font-bold text-orange-400">
+        <div className="rounded-lg p-3 border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-indigo-500/10 shadow-sm">
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Types</p>
+          <p className="text-base font-bold text-blue-600">
             {stats ? Object.keys(stats.signalTypeStats).length : '0'}
           </p>
         </div>
-        <div className="glass-dark rounded-lg p-2.5 border border-white/10">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Per Min</p>
-          <p className="text-base font-bold text-orange-400">
+        <div className="rounded-lg p-3 border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 shadow-sm">
+          <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Per Min</p>
+          <p className="text-base font-bold text-emerald-600">
             {stats && stats.duration > 0 ? Math.round((stats.totalSignals / (stats.duration / 60000)) * 10) / 10 : 'N/A'}
           </p>
         </div>
@@ -277,40 +284,40 @@ export default function SessionSummary({
 
       {/* Signal Type Breakdown */}
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-orange-400 mb-2">Signal Breakdown</h3>
+        <h3 className="text-sm font-semibold text-realtalk-blue mb-2">Signal Breakdown</h3>
         {stats && Object.keys(stats.signalTypeStats).length > 0 ? (
           <div className="space-y-3">
             {Object.entries(stats.signalTypeStats)
               .sort((a, b) => b[1].count - a[1].count)
               .map(([signalType, signalStats]) => {
-                const color = SIGNAL_COLORS[signalType] || '#f97316';
+                const color = SIGNAL_COLORS[signalType] || '#6164F0';
                 const percentage = (signalStats.count / stats.totalSignals) * 100;
                 
                 return (
-                  <div key={signalType} className="glass-dark rounded-lg p-2.5 border border-white/10">
-                    <div className="flex items-center justify-between mb-1.5">
+                  <div key={signalType} className="rounded-lg p-3 border-2 border-gray-200/50 bg-gradient-to-r from-white/80 to-gray-50/50 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="w-4 h-4 rounded-full shadow-sm"
                           style={{ backgroundColor: color }}
                         ></div>
-                        <span className="text-sm font-semibold text-white">{getSignalLabel(signalType)}</span>
+                        <span className="text-sm font-bold" style={{ color: color }}>{getSignalLabel(signalType)}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs font-bold text-orange-400">{signalStats.average}%</span>
+                        <span className="text-sm font-bold" style={{ color: color }}>{signalStats.average}%</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden">
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
                         <div
-                          className="h-full rounded-full transition-all duration-500"
+                          className="h-full rounded-full transition-all duration-500 shadow-sm"
                           style={{
                             width: `${percentage}%`,
                             backgroundColor: color,
                           }}
                         ></div>
                       </div>
-                      <span className="text-xs text-gray-400 w-12 text-right">
+                      <span className="text-xs text-gray-600 w-12 text-right font-semibold">
                         {Math.round(percentage)}%
                       </span>
                     </div>
@@ -319,37 +326,46 @@ export default function SessionSummary({
               })}
           </div>
         ) : (
-          <div className="glass-dark rounded-lg p-4 border border-white/10 text-center py-8">
-            <p className="text-gray-400 text-sm">No signals detected yet. Start a session to see signal breakdown.</p>
+          <div className="glass-dark rounded-lg p-4 border border-gray-200 text-center py-8">
+            <p className="text-gray-500 text-sm">No signals detected yet. Start a session to see signal breakdown.</p>
           </div>
         )}
       </div>
 
       {/* Behavioral Insights */}
       <div>
-        <h3 className="text-sm font-semibold text-orange-400 mb-2">Behavioral Insights</h3>
+        <h3 className="text-sm font-semibold text-realtalk-blue mb-2">Behavioral Insights</h3>
         {insights.length > 0 ? (
           <div className="space-y-2">
-            {insights.map((insight, index) => (
-              <div
-                key={index}
-                className="glass-dark rounded-lg p-2.5 border border-orange-500/20 bg-orange-500/5 animate-slide-in"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="flex items-start gap-2">
-                  <div className="mt-0.5">
-                    <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
+            {insights.map((insight, index) => {
+              const colors = [
+                'from-amber-500/20 to-orange-500/10 border-amber-500/30',
+                'from-blue-500/20 to-cyan-500/10 border-blue-500/30',
+                'from-purple-500/20 to-pink-500/10 border-purple-500/30',
+                'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
+              ];
+              const colorClass = colors[index % colors.length];
+              return (
+                <div
+                  key={index}
+                  className={`rounded-lg p-3 border-2 bg-gradient-to-r ${colorClass} animate-slide-in shadow-sm`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="mt-0.5">
+                      <svg className="w-5 h-5 text-realtalk-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-800 text-xs leading-relaxed flex-1 font-medium">{insight}</p>
                   </div>
-                  <p className="text-gray-300 text-xs leading-relaxed flex-1">{insight}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div className="glass-dark rounded-lg p-3 border border-white/10 text-center py-8">
-            <p className="text-gray-400 text-sm">No insights available yet. Complete a session to see behavioral insights.</p>
+          <div className="glass-dark rounded-lg p-3 border border-gray-200 text-center py-8">
+            <p className="text-gray-500 text-sm">No insights available yet. Complete a session to see behavioral insights.</p>
           </div>
         )}
       </div>

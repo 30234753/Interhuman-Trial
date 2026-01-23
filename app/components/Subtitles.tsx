@@ -394,7 +394,7 @@ export default function Subtitles({
                   <span>{finalTranscript}</span>
                 )}
                 {interimTranscript && (
-                  <span className="text-orange-300/70 italic">
+                  <span className="text-purple-300/70 italic">
                     {' ' + interimTranscript}
                   </span>
                 )}
@@ -404,8 +404,8 @@ export default function Subtitles({
                 {isListening ? (
                   <>
                     <div className="relative">
-                      <div className="animate-pulse h-2 w-2 bg-orange-400 rounded-full"></div>
-                      <div className="animate-ping absolute top-0 left-0 h-2 w-2 bg-orange-400 rounded-full opacity-75"></div>
+                      <div className="animate-pulse h-2 w-2 bg-purple-400 rounded-full"></div>
+                      <div className="animate-ping absolute top-0 left-0 h-2 w-2 bg-purple-400 rounded-full opacity-75"></div>
                     </div>
                     <p className="text-gray-400 text-xs md:text-sm italic">
                       Listening for speech...
@@ -426,10 +426,10 @@ export default function Subtitles({
             {isListening && (
               <div className="flex items-center gap-1.5">
                 <div className="relative">
-                  <div className="h-2 w-2 bg-orange-400 rounded-full animate-pulse"></div>
-                  <div className="absolute top-0 left-0 h-2 w-2 bg-orange-400 rounded-full animate-ping opacity-75"></div>
+                  <div className="h-2 w-2 bg-purple-400 rounded-full animate-pulse"></div>
+                  <div className="absolute top-0 left-0 h-2 w-2 bg-purple-400 rounded-full animate-ping opacity-75"></div>
                 </div>
-                <span className="text-orange-400 text-xs font-semibold hidden sm:inline">
+                <span className="text-purple-400 text-xs font-semibold hidden sm:inline">
                   LIVE
                 </span>
               </div>
@@ -439,7 +439,7 @@ export default function Subtitles({
             {transcript && (
               <button
                 onClick={clearTranscript}
-                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-orange-400"
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-purple-400"
                 aria-label="Clear transcript"
                 title="Clear transcript"
               >

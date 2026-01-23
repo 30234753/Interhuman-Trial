@@ -139,10 +139,15 @@ export default function TimelineReportPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24">
-        <div className="glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl">
+      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
+        </div>
+        <div className="z-10 glass-dark rounded-2xl p-8 backdrop-blur-xl border border-gray-200 shadow-2xl">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-realtalk-blue mx-auto mb-4"></div>
             <p className="text-gray-400">Loading timeline report...</p>
           </div>
         </div>
@@ -152,15 +157,20 @@ export default function TimelineReportPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24">
-        <div className="glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl max-w-2xl w-full">
+      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
+        </div>
+        <div className="z-10 glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl max-w-2xl w-full">
           <div className="text-center">
             <div className="text-red-400 text-4xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold text-red-400 mb-2">Error Loading Report</h2>
             <p className="text-gray-400 mb-6">{error}</p>
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-realtalk-dark to-realtalk-blue hover:from-realtalk-blue hover:to-realtalk-light text-white font-semibold rounded-lg transition-colors"
             >
               Return to Home
             </button>
@@ -172,8 +182,13 @@ export default function TimelineReportPage() {
 
   if (!sessionData) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24">
-        <div className="glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl">
+      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
+        </div>
+        <div className="z-10 glass-dark rounded-2xl p-8 backdrop-blur-xl border border-gray-200 shadow-2xl">
           <div className="text-center">
             <p className="text-gray-400">No session data available</p>
           </div>
@@ -186,8 +201,8 @@ export default function TimelineReportPage() {
     <main className="flex min-h-screen flex-col items-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
       </div>
 
       <div className="z-10 max-w-7xl w-full animate-fade-in">
@@ -195,7 +210,14 @@ export default function TimelineReportPage() {
         <div className="mb-6 animate-fade-in-up">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
+              <h1 
+                className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent"
+                style={{
+                  backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                }}>
                 Timeline Report
               </h1>
               <p className="text-gray-400 text-sm">
@@ -204,7 +226,7 @@ export default function TimelineReportPage() {
             </div>
             <button
               onClick={() => router.push('/')}
-              className="px-4 py-2 text-sm glass-dark hover:bg-white/10 rounded-lg border border-white/10 text-gray-300 hover:text-orange-400 transition-colors"
+              className="px-5 py-2.5 text-sm bg-gradient-to-r from-gray-100 to-gray-50 hover:from-realtalk-blue/20 hover:to-purple-500/20 border-2 border-gray-300 hover:border-realtalk-blue/40 rounded-lg text-realtalk-blue font-semibold hover:text-realtalk-blue transition-all shadow-sm hover:shadow-md"
             >
               ← Back to Home
             </button>
@@ -213,21 +235,21 @@ export default function TimelineReportPage() {
 
         {/* Report Name Section */}
         <div className="mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <div className="glass-dark rounded-xl p-4 backdrop-blur-xl border border-white/10">
+          <div className="glass-dark rounded-xl p-4 backdrop-blur-xl border border-gray-200">
             {existingReport && !isEditing ? (
               // Display existing report name with edit button
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold text-orange-400 mb-2">
+                  <label className="block text-sm font-semibold text-realtalk-blue mb-2">
                     Report Name
                   </label>
-                  <div className="px-4 py-2 bg-black/50 border border-white/10 rounded-lg text-white">
+                  <div className="px-4 py-2.5 bg-gradient-to-r from-realtalk-blue/10 to-purple-500/10 border-2 border-realtalk-blue/30 rounded-lg text-realtalk-blue font-semibold shadow-sm">
                     {existingReport.name}
                   </div>
                 </div>
                 <button
                   onClick={handleEdit}
-                  className="px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-orange-400 hover:text-orange-300 transition-colors whitespace-nowrap mt-6"
+                  className="px-5 py-2.5 bg-gradient-to-r from-realtalk-blue/30 to-purple-500/30 hover:from-realtalk-blue/40 hover:to-purple-500/40 border-2 border-realtalk-blue/40 rounded-lg text-realtalk-blue font-bold hover:text-purple-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap mt-6"
                 >
                   Edit Name
                 </button>
@@ -236,7 +258,7 @@ export default function TimelineReportPage() {
               // Edit mode or create new report
               <div className="flex flex-col sm:flex-row gap-4 items-end">
                 <div className="flex-1">
-                  <label htmlFor="report-name" className="block text-sm font-semibold text-orange-400 mb-2">
+                  <label htmlFor="report-name" className="block text-sm font-semibold text-purple-400 mb-2">
                     {existingReport ? 'Edit Report Name' : 'Save Report As'}
                   </label>
                   <input
@@ -249,7 +271,7 @@ export default function TimelineReportPage() {
                       setSaveSuccess(false);
                     }}
                     placeholder="Enter report name..."
-                    className="w-full px-4 py-2 bg-black/50 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                    className="w-full px-4 py-2.5 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 hover:border-realtalk-blue/40 focus:border-realtalk-blue rounded-lg text-realtalk-blue font-semibold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30 transition-all shadow-sm"
                     disabled={saving}
                   />
                 </div>
@@ -258,7 +280,7 @@ export default function TimelineReportPage() {
                     <button
                       onClick={handleCancelEdit}
                       disabled={saving}
-                      className="px-4 py-2 bg-gray-600/20 hover:bg-gray-600/30 border border-gray-500/30 rounded-lg text-gray-300 hover:text-white transition-colors whitespace-nowrap"
+                      className="px-5 py-2.5 bg-gradient-to-r from-gray-200 to-gray-100 hover:from-gray-300 hover:to-gray-200 border-2 border-gray-400 rounded-lg text-gray-700 hover:text-gray-900 font-semibold transition-all shadow-sm hover:shadow-md whitespace-nowrap disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -266,7 +288,7 @@ export default function TimelineReportPage() {
                   <button
                     onClick={handleSaveReport}
                     disabled={saving || !reportName.trim()}
-                    className="px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors whitespace-nowrap"
+                    className="px-6 py-2.5 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-purple-600 hover:from-realtalk-blue hover:via-purple-500 hover:to-pink-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl whitespace-nowrap"
                   >
                     {saving ? 'Saving...' : existingReport ? 'Update Report' : 'Save Report'}
                   </button>

@@ -10,22 +10,22 @@ export interface TimelineReportProps {
 }
 
 /**
- * Color mapping for different behavioral signal types (orange/black theme)
+ * Color mapping for different behavioral signal types (distinct color palette)
  * Matching SessionSummary component
  */
 const SIGNAL_COLORS: Record<string, string> = {
-  stress: '#f97316', // orange-500
-  engagement: '#ea580c', // orange-600
-  confusion: '#fb923c', // orange-400
-  hesitation: '#fdba74', // orange-300
-  agreement: '#ff8c42', // orange variant
-  disagreement: '#c2410c', // orange-800
-  disengagement: '#9a3412', // orange-900
-  confidence: '#f97316', // orange-500
-  frustration: '#ea580c', // orange-600
-  interest: '#fb923c', // orange-400
-  skepticism: '#c2410c', // orange-800
-  uncertainty: '#fdba74', // orange-300
+  stress: '#ef4444', // red-500 - stress/negative
+  engagement: '#06b6d4', // turquoise-500 - positive engagement
+  confusion: '#f59e0b', // amber-500 - confusion/warning
+  hesitation: '#8b5cf6', // purple-500 - hesitation/uncertainty
+  agreement: '#10b981', // emerald-500 - positive agreement
+  disagreement: '#f97316', // orange-500 - disagreement
+  disengagement: '#6b7280', // gray-500 - neutral disengagement
+  confidence: '#3b82f6', // blue-500 - confidence/positive
+  frustration: '#dc2626', // red-600 - frustration/negative
+  interest: '#eab308', // yellow-500 - interest/curiosity (distinct from engagement)
+  skepticism: '#a855f7', // purple-500 - skepticism
+  uncertainty: '#14b8a6', // teal-500 - uncertainty (distinct from engagement/interest)
 };
 
 /**
@@ -252,32 +252,39 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent mb-2">
+            <h2 
+              className="text-xl md:text-2xl font-bold bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent mb-2"
+              style={{
+                backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                color: 'transparent',
+              }}>
               Timeline Report
             </h2>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-700 text-sm">
               Session Duration: {formatDuration(sessionDuration)} • {signals.length} Signals • {transcriptChunks.length} Transcript Chunks
             </p>
           </div>
           {/* Main Confidence Score */}
           {mainConfidenceScore !== null && (
-            <div className="glass-dark rounded-lg px-4 py-3 border border-orange-500/30 bg-orange-500/10">
-              <div className="text-xs text-gray-400 mb-1">Overall Confidence Score</div>
-              <div className="text-2xl font-bold text-orange-400">{mainConfidenceScore}</div>
+            <div className="rounded-lg px-4 py-3 border-2 border-realtalk-blue/40 bg-gradient-to-br from-realtalk-blue/20 via-purple-500/15 to-turquoise-500/20 shadow-lg">
+              <div className="text-xs text-gray-700 font-semibold mb-1 uppercase tracking-wide">Overall Confidence Score</div>
+              <div className="text-2xl font-bold bg-gradient-to-r from-realtalk-blue to-purple-600 bg-clip-text">{mainConfidenceScore}</div>
             </div>
           )}
         </div>
         
         {/* Signal Type Selector */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <label htmlFor="signal-type-select" className="text-sm font-semibold text-orange-400 whitespace-nowrap">
+          <label htmlFor="signal-type-select" className="text-sm font-semibold text-realtalk-blue whitespace-nowrap">
             Analyze Signal Type:
           </label>
           <select
             id="signal-type-select"
             value={selectedSignalType}
             onChange={(e) => setSelectedSignalType(e.target.value)}
-            className="flex-1 px-4 py-2 bg-black/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all"
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-realtalk-blue/10 to-purple-500/10 border-2 border-realtalk-blue/30 rounded-lg text-realtalk-blue font-semibold placeholder-gray-400 focus:outline-none focus:border-realtalk-blue focus:ring-2 focus:ring-realtalk-blue/30 hover:from-realtalk-blue/15 hover:to-purple-500/15 transition-all shadow-sm"
           >
             <option value="all">Confidence Score</option>
             {availableSignalTypes.map((type) => {
@@ -292,38 +299,42 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
         </div>
         
         {/* Selected Signal Statistics */}
-        {selectedSignalType !== 'all' && selectedSignalStats && (
-          <div className="mt-4 glass-dark rounded-lg p-4 border border-orange-500/30 bg-orange-500/10">
-            <h3 className="text-sm font-semibold text-orange-400 mb-3">
-              {getSignalLabel(selectedSignalType)} Analysis
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
-                <div className="text-xs text-gray-400 mb-1">Count</div>
-                <div className="text-lg font-bold text-white">{selectedSignalStats.count}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400 mb-1">Average Intensity</div>
-                <div className="text-lg font-bold text-orange-400">{selectedSignalStats.average}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400 mb-1">Min Intensity</div>
-                <div className="text-lg font-bold text-white">{selectedSignalStats.min}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-400 mb-1">Max Intensity</div>
-                <div className="text-lg font-bold text-white">{selectedSignalStats.max}%</div>
+        {selectedSignalType !== 'all' && selectedSignalStats && (() => {
+          const signalColor = SIGNAL_COLORS[selectedSignalType] || '#6164F0';
+          return (
+            <div className="mt-4 rounded-lg p-4 border-2 border-realtalk-blue/40 bg-gradient-to-br from-realtalk-blue/15 via-purple-500/10 to-turquoise-500/15 shadow-lg">
+              <h3 className="text-sm font-semibold text-realtalk-blue mb-3 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: signalColor }}></div>
+                {getSignalLabel(selectedSignalType)} Analysis
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
+                  <div className="text-xs text-gray-600 mb-1 font-medium">Count</div>
+                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.count}</div>
+                </div>
+                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
+                  <div className="text-xs text-gray-600 mb-1 font-medium">Average Intensity</div>
+                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.average}%</div>
+                </div>
+                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
+                  <div className="text-xs text-gray-600 mb-1 font-medium">Min Intensity</div>
+                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.min}%</div>
+                </div>
+                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
+                  <div className="text-xs text-gray-600 mb-1 font-medium">Max Intensity</div>
+                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.max}%</div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Timeline Container */}
       <div className="relative w-full">
         {/* Chart */}
         {chartDataPoints.length > 0 && (
-          <div className="relative mb-6 bg-black/30 rounded-lg border border-white/10 p-4" style={{ minHeight: '450px' }}>
+          <div className="relative mb-6 bg-gradient-to-br from-gray-100 via-white to-gray-50 rounded-lg border-2 border-gray-300 shadow-inner p-4" style={{ minHeight: '450px' }}>
             <svg
               width="100%"
               height="100%"
@@ -335,7 +346,7 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
               <text
                 x="400"
                 y="40"
-                fill="rgba(249, 115, 22, 0.9)"
+                fill="#6164F0"
                 fontSize="28"
                 fontWeight="bold"
                 textAnchor="middle"
@@ -353,11 +364,11 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
               {/* Gradient definitions */}
               <defs>
                 <linearGradient id="confidenceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#f97316" stopOpacity="0.1" />
+                  <stop offset="0%" stopColor="#6164F0" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#6164F0" stopOpacity="0.1" />
                 </linearGradient>
                 {availableSignalTypes.map((type) => {
-                  const color = SIGNAL_COLORS[type] || '#f97316';
+                  const color = SIGNAL_COLORS[type] || '#6164F0';
                   return (
                     <linearGradient key={type} id={`signalGradient-${type}`} x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor={color} stopOpacity="0.4" />
@@ -383,9 +394,10 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
                     <text
                       x="50"
                       y={y + 4}
-                      fill="rgba(255,255,255,0.4)"
+                      fill="rgba(97, 100, 240, 0.9)"
                       fontSize="11"
                       textAnchor="end"
+                      fontWeight="500"
                     >
                       {value}
                     </text>
@@ -409,9 +421,10 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
                     <text
                       x={x}
                       y="295"
-                      fill="rgba(255,255,255,0.5)"
+                      fill="rgba(97, 100, 240, 0.9)"
                       fontSize="11"
                       textAnchor="middle"
+                      fontWeight="500"
                     >
                       {formatDuration((sessionDuration * percent) / 100)}
                     </text>
@@ -442,8 +455,8 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
               {/* Chart line */}
               {chartDataPoints.length > 1 && (() => {
                 const lineColor = selectedSignalType === 'all' || !selectedSignalType
-                  ? '#f97316'
-                  : (SIGNAL_COLORS[selectedSignalType] || '#f97316');
+                  ? '#6164F0'
+                  : (SIGNAL_COLORS[selectedSignalType] || '#6164F0');
                 return (
                   <path
                     d={chartDataPoints.map((point, index) => {
@@ -485,8 +498,8 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
                 const x = 60 + (point.time / sessionDuration) * 700;
                 const y = 270 - (point.value / 100) * 200;
                 const pointColor = selectedSignalType === 'all' || !selectedSignalType
-                  ? '#f97316'
-                  : (SIGNAL_COLORS[selectedSignalType] || '#f97316');
+                  ? '#6164F0'
+                  : (SIGNAL_COLORS[selectedSignalType] || '#6164F0');
                 return (
                   <circle
                     key={index}
@@ -509,9 +522,9 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
         {/* Transcript Layer - Concatenated and aligned with timeline */}
         {transcriptChunks.length > 0 && (
           <div className="mt-8 mb-4">
-            <h3 className="text-sm font-semibold text-orange-400 mb-3">Transcript</h3>
-            <div className="glass-dark rounded-lg p-4 border border-orange-500/30 bg-orange-500/10">
-              <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+            <h3 className="text-sm font-semibold text-realtalk-blue mb-3">Transcript</h3>
+            <div className="glass-dark rounded-lg p-4 border border-realtalk-blue/30 bg-realtalk-blue/10">
+              <div className="text-sm text-realtalk-blue/90 leading-relaxed whitespace-pre-wrap">
                 {sortedChunks.map((chunk, index) => (
                   <span key={index} className="inline">
                     {chunk.text}
@@ -520,7 +533,7 @@ export default function TimelineReport({ sessionData, className = '' }: Timeline
                 ))}
               </div>
               {sortedChunks.length > 0 && (
-                <div className="mt-3 text-xs text-gray-400">
+                <div className="mt-3 text-xs text-gray-700">
                   <span>Duration: {formatDuration(sortedChunks[0].normalizedTime)} - {formatDuration(sortedChunks[sortedChunks.length - 1].normalizedEndTime)}</span>
                 </div>
               )}

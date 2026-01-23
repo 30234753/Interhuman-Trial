@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "./lib/session-context";
 import NavigationBar from "./components/NavigationBar";
+import ConsentModalWrapper from "./components/ConsentModalWrapper";
+
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Roleplay Body Language Analyser",
@@ -14,9 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <SessionProvider>
+          <ConsentModalWrapper />
           <NavigationBar />
           {children}
         </SessionProvider>

@@ -66,14 +66,26 @@ export default function TestTranscriptionPage() {
   }, [stream]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
+      </div>
       <div className="z-10 max-w-4xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
-            Deepgram Transcription Test
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent"
+            style={{
+              backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}>
+            Transcription Test
           </h1>
-          <p className="text-gray-400 text-sm md:text-base">
+          <p className="text-gray-700 text-sm md:text-base">
             Test audio capture and real-time transcription
           </p>
         </div>
@@ -85,7 +97,7 @@ export default function TestTranscriptionPage() {
               {!isRecording ? (
                 <button
                   onClick={startRecording}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+                  className="px-6 py-3 bg-gradient-to-r from-turquoise-600 to-turquoise-700 hover:from-turquoise-700 hover:to-turquoise-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -117,7 +129,7 @@ export default function TestTranscriptionPage() {
                   <span className="text-red-400 text-sm font-semibold">RECORDING</span>
                 </>
               ) : (
-                <span className="text-gray-500 text-sm">Not recording</span>
+                <span className="text-gray-700 text-sm">Not recording</span>
               )}
             </div>
           </div>
@@ -131,9 +143,9 @@ export default function TestTranscriptionPage() {
 
           {/* Audio Stream Info */}
           {stream && (
-            <div className="mb-4 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
-              <p className="text-blue-300 text-sm font-medium mb-2">Audio Stream Active</p>
-              <div className="text-blue-200 text-xs space-y-1">
+            <div className="mb-4 p-4 bg-turquoise-500/20 border border-turquoise-500/30 rounded-lg">
+              <p className="text-turquoise-300 text-sm font-medium mb-2">Audio Stream Active</p>
+              <div className="text-turquoise-200 text-xs space-y-1">
                 <p>Audio Tracks: {stream.getAudioTracks().length}</p>
                 {stream.getAudioTracks().map((track, idx) => (
                   <p key={idx} className="ml-4">
@@ -157,9 +169,9 @@ export default function TestTranscriptionPage() {
         {/* Transcription Display */}
         <div className="glass-dark rounded-2xl p-6 md:p-8 backdrop-blur-xl border border-white/10 shadow-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-white">Live Transcription</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Live Transcription</h2>
             {isRecording && (
-              <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="flex items-center gap-2 text-xs text-gray-700">
                 <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span>WebSocket Active</span>
               </div>
@@ -175,7 +187,7 @@ export default function TestTranscriptionPage() {
             {/* Placeholder when not recording */}
             {!isRecording && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-gray-500 text-sm italic">
+                <p className="text-gray-600 text-sm italic">
                   Start recording to see transcription results
                 </p>
               </div>
@@ -185,15 +197,11 @@ export default function TestTranscriptionPage() {
 
         {/* Instructions */}
         <div className="mt-6 glass-dark rounded-2xl p-6 backdrop-blur-xl border border-white/10 shadow-2xl">
-          <h3 className="text-lg font-semibold text-white mb-3">Test Instructions</h3>
-          <ol className="text-gray-300 text-sm space-y-2 list-decimal list-inside">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">Test Instructions</h3>
+          <ol className="text-gray-700 text-sm space-y-2 list-decimal list-inside">
             <li>Click &quot;Start Recording&quot; and grant microphone permissions</li>
             <li>Speak clearly into your microphone</li>
             <li>Watch for real-time transcription in the Live Transcription area</li>
-            <li>Interim results appear in italic/orange text</li>
-            <li>Final results appear in normal white text</li>
-            <li>Check browser console (F12) for detailed logs</li>
-            <li>Check server terminal for Deepgram WebSocket connection logs</li>
           </ol>
         </div>
       </div>

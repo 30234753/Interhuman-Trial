@@ -92,21 +92,30 @@ export default function Home() {
     setSummaryData(null);
   };
 
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
       </div>
 
       <div className="z-10 max-w-6xl w-full items-center justify-between animate-fade-in">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in-up pt-4">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-normal pb-2 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent px-4">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-normal pb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent px-4"
+            style={{
+              backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}>
             Roleplay Body Language Analyser
           </h1>
-          <p className="text-gray-400 text-sm md:text-base mt-2">
+          <p 
+            className="text-realtalk-blue text-sm md:text-base mt-2 font-medium">
             Real-time behavioural analysis powered by AI
           </p>
         </div>
@@ -120,7 +129,7 @@ export default function Home() {
         <div className="w-full grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           {/* Video Player Container - Main Focus */}
           <div className="w-full">
-            <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-gray-200 shadow-2xl">
               <VideoPlayer
                 autoStart={false}
                 enabled={true}
@@ -139,15 +148,12 @@ export default function Home() {
                 }}
                 onSignalsUpdate={(signals) => {
                   console.log('Signals updated:', signals);
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'page.tsx:140',message:'onSignalsUpdate handler called',data:{signalsCount:signals.length,signals:signals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),sessionActive,currentStateSignalsCount:sessionState.signals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                  // #endregion
                   // Update session with signals if session is active
                   if (sessionActive) {
                     updateSignals(signals);
                   }
                 }}
-                className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-600/50"
+                className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-200"
               />
             </div>
           </div>

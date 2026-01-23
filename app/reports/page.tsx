@@ -51,14 +51,14 @@ export default function ReportsPage() {
       <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="z-10 glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl">
+        <div className="z-10 glass-dark rounded-2xl p-8 backdrop-blur-xl border border-gray-200 shadow-2xl">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-400 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading reports...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-realtalk-blue mx-auto mb-4"></div>
+            <p className="text-gray-700">Loading reports...</p>
           </div>
         </div>
       </main>
@@ -70,18 +70,18 @@ export default function ReportsPage() {
       <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
         </div>
 
         <div className="z-10 max-w-2xl w-full glass-dark rounded-2xl p-8 backdrop-blur-xl border border-white/10 shadow-2xl">
           <div className="text-center">
             <div className="text-red-400 text-4xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold text-red-400 mb-2">Error Loading Reports</h2>
-            <p className="text-gray-400 mb-6">{error}</p>
+            <p className="text-gray-700 mb-6">{error}</p>
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-realtalk-dark to-realtalk-blue hover:from-realtalk-blue hover:to-realtalk-light text-white font-semibold rounded-lg transition-colors"
             >
               Return to Main Screen
             </button>
@@ -95,35 +95,42 @@ export default function ReportsPage() {
     <main className="flex min-h-screen flex-col items-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-turquoise-500/10 rounded-full blur-3xl"></div>
       </div>
 
       <div className="z-10 max-w-6xl w-full animate-fade-in">
         {/* Header */}
         <div className="mb-6 animate-fade-in-up">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
+          <h1 
+            className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent"
+            style={{
+              backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}>
             Saved Reports
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-700 text-sm">
             View and manage your timeline reports
           </p>
         </div>
 
         {/* Reports List */}
         {reports.length === 0 ? (
-          <div className="glass-dark rounded-2xl p-8 md:p-12 backdrop-blur-xl border border-white/10 shadow-2xl text-center">
+          <div className="glass-dark rounded-2xl p-8 md:p-12 backdrop-blur-xl border border-gray-200 shadow-2xl text-center">
             <div className="mb-4">
               <svg className="w-16 h-16 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <h2 className="text-xl font-semibold text-gray-300 mb-2">No Reports Yet</h2>
-              <p className="text-gray-400 mb-6">
+              <h2 className="text-xl font-semibold text-gray-700 mb-2">No Reports Yet</h2>
+              <p className="text-gray-700 mb-6">
                 Start a session and save a report to see it here.
               </p>
               <button
                 onClick={() => router.push('/')}
-                className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-realtalk-dark to-realtalk-blue hover:from-realtalk-blue hover:to-realtalk-light text-white font-semibold rounded-lg transition-colors"
               >
                 Go to Main Screen
               </button>
@@ -131,48 +138,76 @@ export default function ReportsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            {reports.map((report) => (
-              <div
-                key={report.id}
-                className="glass-dark rounded-xl p-6 backdrop-blur-xl border border-white/10 shadow-xl hover:border-orange-500/30 transition-all duration-200 cursor-pointer group"
-                onClick={() => router.push(`/timeline/${report.session_id}`)}
-              >
-                <div className="flex flex-col h-full">
-                  {/* Report Icon */}
-                  <div className="mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center group-hover:bg-orange-500/30 transition-colors">
-                      <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
+            {reports.map((report, index) => {
+              // Cycle through different gradient colors for variety
+              const gradients = [
+                'from-realtalk-blue to-purple-500',
+                'from-turquoise-500 to-cyan-400',
+                'from-purple-500 to-pink-500',
+                'from-blue-500 to-indigo-500',
+                'from-cyan-500 to-teal-500',
+                'from-indigo-500 to-purple-500',
+              ];
+              const gradient = gradients[index % gradients.length];
+              
+              return (
+                <div
+                  key={report.id}
+                  className="glass-dark rounded-xl p-6 backdrop-blur-xl border-2 border-gray-200 shadow-xl hover:border-realtalk-blue/50 hover:shadow-2xl transition-all duration-200 cursor-pointer group overflow-hidden relative"
+                  onClick={() => router.push(`/timeline/${report.session_id}`)}
+                >
+                  {/* Subtle gradient accent at top */}
+                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-60 group-hover:opacity-100 transition-opacity`}></div>
+                  
+                  <div className="flex flex-col h-full relative z-10">
+                    {/* Report Icon */}
+                    <div className="mb-4">
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}>
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Report Name */}
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-orange-400 transition-colors line-clamp-2">
-                    {report.name}
-                  </h3>
+                    {/* Report Name */}
+                    <h3 
+                      className={`text-lg font-semibold bg-gradient-to-r ${gradient} bg-clip-text text-transparent mb-2 group-hover:scale-105 transition-transform line-clamp-2`}
+                      style={{
+                        backgroundImage: gradient.includes('realtalk-blue') ? 'linear-gradient(to right, #6164F0, #a855f7)' :
+                                        gradient.includes('turquoise') ? 'linear-gradient(to right, #06b6d4, #22d3ee)' :
+                                        gradient.includes('purple') && gradient.includes('pink') ? 'linear-gradient(to right, #a855f7, #ec4899)' :
+                                        gradient.includes('blue') && gradient.includes('indigo') ? 'linear-gradient(to right, #3b82f6, #6366f1)' :
+                                        gradient.includes('cyan') && gradient.includes('teal') ? 'linear-gradient(to right, #06b6d4, #14b8a6)' :
+                                        'linear-gradient(to right, #6366f1, #a855f7)',
+                        WebkitBackgroundClip: 'text',
+                        backgroundClip: 'text',
+                        color: 'transparent',
+                      }}>
+                      {report.name || 'Unnamed Report'}
+                    </h3>
 
-                  {/* Report Metadata */}
-                  <div className="mt-auto pt-4 border-t border-white/10">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Session ID</span>
-                      <span className="text-gray-300 font-mono text-xs">{report.session_id.substring(0, 8)}...</span>
+                    {/* Report Metadata */}
+                    <div className="mt-auto pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 font-semibold">Session ID</span>
+                        <span className="text-gray-900 font-mono text-xs font-bold">{report.session_id.substring(0, 8)}...</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-2">
+                        <span className="text-gray-700 font-semibold">Created</span>
+                        <span className="text-gray-900 font-bold">{formatDate(report.created_at)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm mt-2">
-                      <span className="text-gray-400">Created</span>
-                      <span className="text-gray-300">{formatDate(report.created_at)}</span>
-                    </div>
-                  </div>
 
-                  {/* View Button */}
-                  <div className="mt-4">
-                    <div className="px-4 py-2 bg-orange-500/20 group-hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-orange-400 text-center text-sm font-semibold transition-colors">
-                      View Report →
+                    {/* View Button */}
+                    <div className="mt-4">
+                      <div className={`px-4 py-2.5 bg-gradient-to-r ${gradient} rounded-lg text-white text-center text-sm font-bold transition-all group-hover:scale-105 group-hover:shadow-lg`}>
+                        View Report →
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
