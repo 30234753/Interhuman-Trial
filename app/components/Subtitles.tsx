@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createClient, LiveTranscriptionEvents, LiveClient } from '@deepgram/sdk';
 import { useSession } from '../lib/session-context';
+import { useTranscript } from '../lib/transcript-context';
 
 export interface SubtitlesProps {
   enabled?: boolean;
@@ -19,20 +20,20 @@ export default function Subtitles({
   stream = null,
   className = '',
 }: SubtitlesProps) {
-  const [transcript, setTranscript] = useState<string>('');
-  const [finalTranscript, setFinalTranscript] = useState<string>('');
-  const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Session context for saving transcript chunks
+
   const { sessionState, addTranscriptChunk } = useSession();
-  
-  // Refs for MediaRecorder and transcription session
+  const {
+    finalTranscript,
+    interimTranscript,
+    appendFinalChunk,
+    setInterimTranscript: setInterimInContext,
+    clearTranscript: clearTranscriptInContext,
+  } = useTranscript();
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const transcriptionSessionIdRef = useRef<string | null>(null);
-  const finalTranscriptRef = useRef<string>('');
-  const interimTranscriptRef = useRef<string>('');
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
@@ -48,35 +49,33 @@ export default function Subtitles({
   }, []);
 
   // Handle transcript updates (interim and final)
-  const handleTranscript = useCallback((text: string, isFinal: boolean) => {
-    if (isFinal) {
-      // Add to final transcript
-      const updatedFinal = finalTranscriptRef.current + (finalTranscriptRef.current ? ' ' : '') + text;
-      finalTranscriptRef.current = updatedFinal;
-      setFinalTranscript(updatedFinal);
-      // Clear interim when we get a final result
-      interimTranscriptRef.current = '';
-      setInterimTranscript('');
-      
-      // Save transcript chunk to database if session is active
-      if (sessionState.isActive && sessionState.sessionId && text.trim()) {
-        const chunkOrder = chunkOrderRef.current++;
-        const timestamp = Date.now();
-        addTranscriptChunk(text.trim(), chunkOrder, timestamp).catch((error) => {
-          console.error('[Subtitles] Error saving transcript chunk:', error);
-        });
-      }
-    } else {
-      // Update interim transcript
-      interimTranscriptRef.current = text;
-      setInterimTranscript(text);
-    }
+  const handleTranscript = useCallback(
+    (text: string, isFinal: boolean) => {
+      if (isFinal) {
+        appendFinalChunk(text);
+        setInterimInContext('');
 
-    // Update combined display: final transcript + interim transcript
-    const display = finalTranscriptRef.current + (interimTranscriptRef.current ? ' ' + interimTranscriptRef.current : '');
-    // Limit to last 200 characters to prevent overflow
-    setTranscript(display.slice(-200));
-  }, [sessionState.isActive, sessionState.sessionId, addTranscriptChunk]);
+        if (sessionState.isActive && sessionState.sessionId && text.trim()) {
+          const chunkOrder = chunkOrderRef.current++;
+          const timestamp = Date.now();
+          addTranscriptChunk(text.trim(), chunkOrder, timestamp).catch(
+            (err) => {
+              console.error('[Subtitles] Error saving transcript chunk:', err);
+            }
+          );
+        }
+      } else {
+        setInterimInContext(text);
+      }
+    },
+    [
+      sessionState.isActive,
+      sessionState.sessionId,
+      addTranscriptChunk,
+      appendFinalChunk,
+      setInterimInContext,
+    ]
+  );
 
   // Start transcription session and connect directly to Deepgram WebSocket
   const startTranscriptionSession = useCallback(async (sessionId: string) => {
@@ -360,22 +359,14 @@ export default function Subtitles({
   // Clear transcript when stream stops
   useEffect(() => {
     if (!stream || !stream.active) {
-      setTranscript('');
-      setFinalTranscript('');
-      setInterimTranscript('');
-      finalTranscriptRef.current = '';
-      interimTranscriptRef.current = '';
+      clearTranscriptInContext();
     }
-  }, [stream]);
+  }, [stream, clearTranscriptInContext]);
 
-  // Clear transcript manually
+  // Clear transcript manually (for UI button)
   const clearTranscript = useCallback(() => {
-    setTranscript('');
-    setFinalTranscript('');
-    setInterimTranscript('');
-    finalTranscriptRef.current = '';
-    interimTranscriptRef.current = '';
-  }, []);
+    clearTranscriptInContext();
+  }, [clearTranscriptInContext]);
 
   if (!enabled) {
     return null;
@@ -388,13 +379,13 @@ export default function Subtitles({
         <div className="flex items-start justify-between gap-3">
           {/* Transcript Text */}
           <div className="flex-1 min-w-0">
-            {transcript ? (
-              <p className="text-white text-sm md:text-base font-medium leading-relaxed break-words">
+            {finalTranscript || interimTranscript ? (
+              <p className="text-gray-900 text-sm md:text-base font-medium leading-relaxed break-words">
                 {finalTranscript && (
                   <span>{finalTranscript}</span>
                 )}
                 {interimTranscript && (
-                  <span className="text-purple-300/70 italic">
+                  <span className="text-gray-600 italic">
                     {' ' + interimTranscript}
                   </span>
                 )}
@@ -436,7 +427,7 @@ export default function Subtitles({
             )}
 
             {/* Clear Button */}
-            {transcript && (
+            {(finalTranscript || interimTranscript) && (
               <button
                 onClick={clearTranscript}
                 className="p-1.5 hover:bg-white/10 rounded-lg transition-colors duration-200 text-gray-400 hover:text-purple-400"

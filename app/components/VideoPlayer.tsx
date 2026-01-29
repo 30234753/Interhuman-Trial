@@ -12,6 +12,8 @@ export interface VideoPlayerProps extends Omit<VideoCaptureProps, 'onStreamReady
   onSignalsUpdate?: (signals: BehavioralSignal[]) => void;
   analysisInterval?: number; // Interval in milliseconds between frame captures
   enabled?: boolean; // Whether to enable real-time analysis
+  /** When true, run behavioral analysis; when false, do not call captureAndAnalyze / onSignalsUpdate (answer window only) */
+  answerWindowActive?: boolean;
 }
 
 /**
@@ -23,6 +25,7 @@ export default function VideoPlayer({
   onSignalsUpdate,
   analysisInterval = 2000, // Default: analyze every 2 seconds
   enabled = true,
+  answerWindowActive = false,
   className = '',
   ...videoCaptureProps
 }: VideoPlayerProps) {
@@ -122,6 +125,11 @@ export default function VideoPlayer({
     fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
     // #endregion
     
+    // Only run analysis during answer window
+    if (!answerWindowActive) {
+      return;
+    }
+
     // Check if stream is still active before starting analysis
     if (!isStreamActiveRef.current) {
       // #region agent log
@@ -492,60 +500,55 @@ export default function VideoPlayer({
       }
       abortControllerRef.current = null;
     }
-  }, [enabled, isAnalyzing, onSignalsUpdate, getVideoElement, getSupportedMimeType, analysisInterval]);
+  }, [enabled, answerWindowActive, isAnalyzing, onSignalsUpdate, getVideoElement, getSupportedMimeType, analysisInterval]);
 
   /**
-   * Handles stream ready event and starts analysis loop
-   * Uses a sequential approach: waits for each analysis to complete before starting the next
+   * Starts the sequential analysis loop. Only runs when answerWindowActive and enabled.
+   * Used when stream becomes ready and when answerWindowActive turns true mid-session.
+   */
+  const startAnalysisLoop = useCallback(() => {
+    if (!enabled || analysisInterval <= 0 || !answerWindowActive) {
+      return;
+    }
+    if (analysisIntervalRef.current) {
+      clearInterval(analysisIntervalRef.current);
+      clearTimeout(analysisIntervalRef.current as any);
+      analysisIntervalRef.current = null;
+    }
+    const runAnalysis = async () => {
+      if (!isStreamActiveRef.current) {
+        return;
+      }
+      try {
+        await captureAndAnalyze();
+      } catch (error) {
+        // Errors are already logged in captureAndAnalyze
+      }
+      // Schedule next only if stream still active, enabled, and still in answer window
+      if (isStreamActiveRef.current && enabled && answerWindowActive) {
+        analysisIntervalRef.current = setTimeout(runAnalysis, analysisInterval) as any;
+      }
+    };
+    runAnalysis();
+  }, [enabled, analysisInterval, answerWindowActive, captureAndAnalyze]);
+
+  /**
+   * Handles stream ready event and starts analysis loop (only when answer window is active)
    */
   const handleStreamReady = useCallback((stream: MediaStream) => {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:424',message:'handleStreamReady called',data:{enabled,analysisInterval,streamActive:stream.active,audioTracks:stream.getAudioTracks().length,videoTracks:stream.getVideoTracks().length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
     // #endregion
-    
-    // Mark stream as active and store stream reference for subtitles
+
     isStreamActiveRef.current = true;
     setCurrentStream(stream);
 
-    // Start periodic analysis if enabled
-    if (enabled && analysisInterval > 0) {
-      // Clear any existing interval
-      if (analysisIntervalRef.current) {
-        clearInterval(analysisIntervalRef.current);
-      }
-
-      // Sequential analysis: start first one immediately, then schedule next after completion
-      const runAnalysis = async () => {
-        if (!isStreamActiveRef.current) {
-          return;
-        }
-        
-        try {
-          await captureAndAnalyze();
-        } catch (error) {
-          // Errors are already logged in captureAndAnalyze
-        }
-        
-        // Schedule next analysis after the interval, but only if stream is still active
-        if (isStreamActiveRef.current && enabled) {
-          analysisIntervalRef.current = setTimeout(runAnalysis, analysisInterval) as any;
-        }
-      };
-      
-      // Start first analysis
-      runAnalysis();
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:448',message:'Sequential analysis started',data:{intervalMs:analysisInterval},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
-    } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:452',message:'Analysis interval NOT started',data:{enabled,analysisInterval,reason:!enabled?'disabled':'interval<=0'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
+    if (enabled && analysisInterval > 0 && answerWindowActive) {
+      startAnalysisLoop();
     }
 
     onStreamReady?.(stream);
-  }, [enabled, analysisInterval, captureAndAnalyze, onStreamReady]);
+  }, [enabled, analysisInterval, answerWindowActive, startAnalysisLoop, onStreamReady]);
 
   /**
    * Handles stream stop and cleans up analysis interval
@@ -606,19 +609,27 @@ export default function VideoPlayer({
 
   // Update analysis when enabled state changes
   // Only disable analysis if enabled becomes false - don't restart if already running
-  // The handleStreamReady callback already sets up the interval correctly
   useEffect(() => {
     if (!enabled && analysisIntervalRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:533',message:'Analysis disabled - clearing interval',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
       clearInterval(analysisIntervalRef.current);
+      clearTimeout(analysisIntervalRef.current as any);
       analysisIntervalRef.current = null;
     }
-    // Note: We don't restart the interval here if enabled becomes true
-    // because handleStreamReady already handles that when the stream starts
-    // This prevents the interval from being constantly reset
   }, [enabled]);
+
+  // Start/stop analysis loop when answer window opens/closes
+  useEffect(() => {
+    if (!answerWindowActive) {
+      if (analysisIntervalRef.current) {
+        clearTimeout(analysisIntervalRef.current as any);
+        analysisIntervalRef.current = null;
+      }
+      return;
+    }
+    if (isStreamActiveRef.current && enabled && analysisInterval > 0) {
+      startAnalysisLoop();
+    }
+  }, [answerWindowActive, enabled, analysisInterval, startAnalysisLoop]);
 
   return (
     <div ref={containerRef} className={`relative w-full h-full ${className}`}>
@@ -641,11 +652,11 @@ export default function VideoPlayer({
         compact={false}
       />
 
-      {/* Subtitles overlay */}
+      {/* Subtitles overlay – fixed padding so position doesn't jolt when signals appear */}
       <Subtitles
         enabled={enabled && isStreamActiveRef.current}
         stream={currentStream}
-        className={currentSignals.length > 0 ? "pb-20" : "pb-4"}
+        className="pb-20"
       />
 
       {/* Analysis status indicator */}

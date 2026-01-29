@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionData, BehavioralSignal, TranscriptChunk } from '@/app/lib/types';
+import { SessionData, BehavioralSignal, TranscriptChunk, SessionAnswer, QuestionOption } from '@/app/lib/types';
 import { createSupabaseClient } from '@/app/lib/supabase';
 
 export const runtime = 'nodejs';
@@ -266,6 +266,70 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case 'addAnswer': {
+        // Insert a session answer (question response with answer window)
+        if (!sessionId) {
+          return NextResponse.json(
+            { success: false, error: 'Session ID is required' },
+            { status: 400 }
+          );
+        }
+
+        const { questionId, startTime, endTime, spokenAnswer, correct } = body;
+        if (
+          !questionId ||
+          startTime === undefined ||
+          endTime === undefined ||
+          spokenAnswer === undefined
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'questionId, startTime, endTime, and spokenAnswer are required',
+            },
+            { status: 400 }
+          );
+        }
+
+        // Verify session exists
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError || !sessionData) {
+          return NextResponse.json(
+            { success: false, error: 'Session not found' },
+            { status: 404 }
+          );
+        }
+
+        const { error: insertError } = await supabase
+          .from('session_answers')
+          .insert({
+            session_id: sessionId,
+            question_id: questionId,
+            start_time: Number(startTime),
+            end_time: Number(endTime),
+            spoken_answer: String(spokenAnswer),
+            correct: correct === true || correct === false ? correct : null,
+          });
+
+        if (insertError) {
+          console.error('Error inserting session answer:', insertError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to save session answer' },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+        });
+      }
+
       case 'end': {
         // Update session with end_time
         if (!sessionId) {
@@ -383,6 +447,52 @@ async function fetchSessionData(
     console.error('Error fetching transcript chunks:', chunksError);
   }
 
+  // Fetch session_answers with question snapshot for report
+  const { data: answersRows, error: answersError } = await supabase
+    .from('session_answers')
+    .select(`
+      question_id,
+      start_time,
+      end_time,
+      spoken_answer,
+      correct,
+      questions (
+        id,
+        text,
+        type,
+        options,
+        correct_answer
+      )
+    `)
+    .eq('session_id', sessionId)
+    .order('start_time', { ascending: true });
+
+  if (answersError) {
+    console.error('Error fetching session answers:', answersError);
+  }
+
+  // Map to SessionAnswer[] (questions is nested per row; Supabase returns it as object or array by join type)
+  const answers: SessionAnswer[] = [];
+  if (answersRows) {
+    for (const row of answersRows) {
+      const rawQ = row.questions;
+      const q = (Array.isArray(rawQ) ? rawQ[0] : rawQ) as Record<string, unknown> | null;
+      if (!q) continue;
+      const options = (q.options as QuestionOption[] | null) ?? null;
+      answers.push({
+        questionId: row.question_id as string,
+        questionText: (q.text as string) ?? '',
+        type: (q.type as SessionAnswer['type']) ?? 'open_ended',
+        options,
+        correctAnswer: (q.correct_answer as string | null) ?? null,
+        startTime: Number(row.start_time),
+        endTime: Number(row.end_time),
+        spokenAnswer: (row.spoken_answer as string) ?? '',
+        correct: row.correct as boolean | null ?? null,
+      });
+    }
+  }
+
   // Convert signals to BehavioralSignal format
   const behavioralSignals: BehavioralSignal[] =
     signals?.map((s) => ({
@@ -413,6 +523,7 @@ async function fetchSessionData(
     signals: behavioralSignals,
     averageStressScore,
     transcriptChunks,
+    answers: answers.length > 0 ? answers : undefined,
   };
 }
 

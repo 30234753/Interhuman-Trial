@@ -115,11 +115,11 @@ export default function BehavioralIndicator({
   // Format signal type name
   const signalName = signal.type.charAt(0).toUpperCase() + signal.type.slice(1);
 
-  // Custom positioning style for center-bottom layout
+  // Custom positioning style: above question bar (question bar ~56px; place indicators at 96px+ from bottom)
   const customStyle = position === 'custom' 
     ? { 
         transform: `translate(calc(-50% + ${customOffset}px), 0)`,
-        bottom: `${16 + customVerticalOffset}px`, // 16px = bottom-4 (1rem), add vertical offset
+        bottom: `${96 + customVerticalOffset}px`,
       }
     : {};
 

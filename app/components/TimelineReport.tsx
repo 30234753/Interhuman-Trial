@@ -3,6 +3,8 @@
 import { SessionData, BehavioralSignal, TranscriptChunk } from '@/app/lib/types';
 import { useState, useMemo } from 'react';
 import { calculateConfidenceScore, getSignalStatistics } from '@/app/lib/signal-aggregator';
+import { RADAR_SCENARIOS, getScenarioById, getRadarScores } from '@/app/lib/radar-attributes';
+import EmotionalRadarChart from '@/app/components/EmotionalRadarChart';
 
 export interface TimelineReportProps {
   sessionData: SessionData;
@@ -92,8 +94,24 @@ export default function TimelineReport({
   const { signals, transcriptChunks = [], startTime, endTime } = sessionData;
   const sessionDuration = endTime ? endTime - startTime : Date.now() - startTime;
   
-  // State for selected signal type
-  const [selectedSignalType, setSelectedSignalType] = useState<string>('all');
+  // State for selected signal types (multi-select: 'all' = Confidence Score, or signal type strings)
+  const [selectedSignalTypes, setSelectedSignalTypes] = useState<Set<string>>(new Set(['all']));
+  
+  const toggleSignalType = (key: string) => {
+    setSelectedSignalTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+        // Ensure at least one remains
+        if (next.size === 0) next.add('all');
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+  // State for radar scenario (which 5 attributes to show)
+  const [radarScenarioId, setRadarScenarioId] = useState<string>(RADAR_SCENARIOS[0]?.id ?? 'general');
   
   // Internal state for rating and feedback (used if not controlled externally)
   const [internalRating, setInternalRating] = useState<number | null>(externalRating ?? null);
@@ -138,85 +156,72 @@ export default function TimelineReport({
     [transcriptChunks, startTime]
   );
 
-  // Calculate chart data points over time (confidence or signal intensity based on selection)
-  const chartDataPoints = useMemo(() => {
-    if (signals.length === 0 || sessionDuration === 0) return [];
+  // Build chart series: one entry per selected type (confidence and/or signal types)
+  type ChartSeries = { seriesKey: string; label: string; color: string; dataPoints: Array<{ time: number; value: number }> };
+  const chartSeries = useMemo((): ChartSeries[] => {
+    if (signals.length === 0 || sessionDuration === 0 || selectedSignalTypes.size === 0) return [];
     
-    const dataPoints: Array<{ time: number; value: number }> = [];
-    const sampleInterval = Math.max(5000, sessionDuration / 50); // Sample every 5s or 50 points max
-    
-    // Find the first occurrence of any signal (for confidence) or selected signal type
-    let firstSignalTime: number | null = null;
-    if (selectedSignalType === 'all' || !selectedSignalType) {
-      // For confidence score, find first signal of any type
-      if (normalizedSignals.length > 0) {
-        firstSignalTime = Math.min(...normalizedSignals.map(s => s.normalizedTime));
-      }
-    } else {
-      // For specific signal types, find first signal of that type
-      const firstSignal = normalizedSignals.find(
-        (signal) => signal.type === selectedSignalType
-      );
-      if (firstSignal) {
-        firstSignalTime = firstSignal.normalizedTime;
-      }
-    }
-    
+    const sampleInterval = Math.max(5000, sessionDuration / 50);
+    const timePoints: number[] = [];
     for (let time = 0; time <= sessionDuration; time += sampleInterval) {
-      let value: number | null = null;
-      
-      if (selectedSignalType === 'all' || !selectedSignalType) {
-        // For confidence score, show 0 before first signal, then cumulative confidence
-        if (firstSignalTime === null || time < firstSignalTime) {
-          // Before the first signal, show 0
-          value = 0;
-        } else {
-          // After first signal, calculate confidence score for all signals up to this point
-          const signalsUpToTime = normalizedSignals.filter(
-            (signal) => signal.normalizedTime <= time
-          );
-          
-          if (signalsUpToTime.length > 0) {
-            const confidence = calculateConfidenceScore(signalsUpToTime.map((signal) => ({
-              type: signal.type,
-              intensity: signal.intensity,
-              timestamp: startTime + signal.normalizedTime,
-            })));
-            value = confidence;
-          } else {
-            value = 0;
-          }
-        }
-      } else {
-        // For specific signal types, show 0 before first signal, then cumulative average
-        if (firstSignalTime === null || time < firstSignalTime) {
-          // Before the first signal of this type, show 0
-          value = 0;
-        } else {
-          // After first signal, calculate average intensity of all signals of this type up to this point
-          const signalsUpToTime = normalizedSignals.filter(
-            (signal) => 
-              signal.type === selectedSignalType &&
-              signal.normalizedTime <= time
-          );
-          
-          if (signalsUpToTime.length > 0) {
-            const sum = signalsUpToTime.reduce((acc, signal) => acc + signal.intensity, 0);
-            value = sum / signalsUpToTime.length;
-          } else {
-            value = 0;
-          }
-        }
-      }
-      
-      // Always add a data point if we have a value (or 0 for missing signals)
-      if (value !== null) {
-        dataPoints.push({ time, value });
-      }
+      timePoints.push(time);
     }
     
-    return dataPoints;
-  }, [signals, sessionDuration, startTime, normalizedSignals, selectedSignalType]);
+    const firstSignalTimeAny = normalizedSignals.length > 0
+      ? Math.min(...normalizedSignals.map(s => s.normalizedTime))
+      : null;
+    
+    const series: ChartSeries[] = [];
+    
+    if (selectedSignalTypes.has('all')) {
+      const dataPoints = timePoints.map((time) => {
+        if (firstSignalTimeAny === null || time < firstSignalTimeAny) return { time, value: 0 };
+        const signalsUpToTime = normalizedSignals.filter((s) => s.normalizedTime <= time);
+        const confidence = signalsUpToTime.length > 0
+          ? (calculateConfidenceScore(signalsUpToTime.map((s) => ({
+              type: s.type,
+              intensity: s.intensity,
+              timestamp: startTime + s.normalizedTime,
+            }))) ?? 0)
+          : 0;
+        return { time, value: confidence };
+      });
+      series.push({
+        seriesKey: 'all',
+        label: 'Confidence Score',
+        color: '#6164F0',
+        dataPoints,
+      });
+    }
+    
+    const availableTypes = Array.from(new Set(signals.map((s) => s.type))).sort();
+    availableTypes.forEach((signalType) => {
+      if (!selectedSignalTypes.has(signalType)) return;
+      const firstSignal = normalizedSignals.find((s) => s.type === signalType);
+      const firstSignalTime = firstSignal?.normalizedTime ?? null;
+      const dataPoints = timePoints.map((time) => {
+        if (firstSignalTime === null || time < firstSignalTime) return { time, value: 0 };
+        const signalsUpToTime = normalizedSignals.filter(
+          (s) => s.type === signalType && s.normalizedTime <= time
+        );
+        const avg = signalsUpToTime.length > 0
+          ? signalsUpToTime.reduce((acc, s) => acc + s.intensity, 0) / signalsUpToTime.length
+          : 0;
+        return { time, value: avg };
+      });
+      series.push({
+        seriesKey: signalType,
+        label: getSignalLabel(signalType),
+        color: SIGNAL_COLORS[signalType] || '#6164F0',
+        dataPoints,
+      });
+    });
+    
+    return series;
+  }, [signals, sessionDuration, startTime, normalizedSignals, selectedSignalTypes]);
+
+  // Flat list of all data points for backward-compat checks (e.g. "has any line to show")
+  const hasAnyChartData = chartSeries.some((s) => s.dataPoints.length > 1);
 
   // Calculate position percentage (0-100%)
   const getPositionPercent = (normalizedTime: number): number => {
@@ -240,21 +245,34 @@ export default function TimelineReport({
     return Array.from(types).sort();
   }, [signals]);
 
-  // Get statistics for selected signal type
-  const selectedSignalStats = useMemo(() => {
-    if (selectedSignalType === 'all' || !selectedSignalType) {
-      return null;
-    }
-    return getSignalStatistics(signals, selectedSignalType);
-  }, [signals, selectedSignalType]);
+  // Get statistics for each selected signal type (excluding 'all')
+  const selectedSignalStatsList = useMemo(() => {
+    return Array.from(selectedSignalTypes)
+      .filter((key) => key !== 'all')
+      .map((signalType) => ({
+        signalType,
+        stats: getSignalStatistics(signals, signalType),
+      }))
+      .filter((entry) => entry.stats != null) as Array<{ signalType: string; stats: NonNullable<ReturnType<typeof getSignalStatistics>> }>;
+  }, [signals, selectedSignalTypes]);
 
-  // Filter signals for display based on selection
+  // Filter signals for display based on selection (all selected types)
   const displaySignals = useMemo(() => {
-    if (selectedSignalType === 'all' || !selectedSignalType) {
+    if (selectedSignalTypes.has('all') && selectedSignalTypes.size === 1) {
       return normalizedSignals;
     }
-    return normalizedSignals.filter(s => s.type === selectedSignalType);
-  }, [normalizedSignals, selectedSignalType]);
+    return normalizedSignals.filter((s) => selectedSignalTypes.has(s.type));
+  }, [normalizedSignals, selectedSignalTypes]);
+
+  // Radar chart: 5 emotional attributes for selected scenario
+  const radarScenario = useMemo(
+    () => getScenarioById(radarScenarioId) ?? RADAR_SCENARIOS[0],
+    [radarScenarioId]
+  );
+  const radarData = useMemo(
+    () => getRadarScores(signals, radarScenario),
+    [signals, radarScenario]
+  );
 
   // Group signals by time position (within 2% tolerance) to avoid overlap
   // Also deduplicate signals at the exact same timestamp
@@ -319,65 +337,73 @@ export default function TimelineReport({
           )}
         </div>
         
-        {/* Signal Type Selector */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <label htmlFor="signal-type-select" className="text-sm font-semibold text-realtalk-blue whitespace-nowrap">
-            Analyze Signal Type:
-          </label>
-          <select
-            id="signal-type-select"
-            value={selectedSignalType}
-            onChange={(e) => setSelectedSignalType(e.target.value)}
-            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-realtalk-blue/10 to-purple-500/10 border-2 border-realtalk-blue/30 rounded-lg text-realtalk-blue font-semibold placeholder-gray-400 focus:outline-none focus:border-realtalk-blue focus:ring-2 focus:ring-realtalk-blue/30 hover:from-realtalk-blue/15 hover:to-purple-500/15 transition-all shadow-sm"
-          >
-            <option value="all">Confidence Score</option>
+        {/* Signal Type Multi-Select Checkboxes */}
+        <div className="mt-4">
+          <div className="text-sm font-semibold text-realtalk-blue mb-2">Compare on chart:</div>
+          <div className="flex flex-wrap gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={selectedSignalTypes.has('all')}
+                onChange={() => toggleSignalType('all')}
+                className="w-4 h-4 rounded border-2 border-realtalk-blue/50 text-realtalk-blue focus:ring-realtalk-blue/30"
+              />
+              <span className="text-sm font-medium text-gray-700">Confidence Score</span>
+            </label>
             {availableSignalTypes.map((type) => {
-              const count = signals.filter(s => s.type === type).length;
+              const count = signals.filter((s) => s.type === type).length;
+              const color = SIGNAL_COLORS[type] || '#6164F0';
               return (
-                <option key={type} value={type}>
-                  {getSignalLabel(type)} ({count})
-                </option>
+                <label key={type} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selectedSignalTypes.has(type)}
+                    onChange={() => toggleSignalType(type)}
+                    className="w-4 h-4 rounded border-2 border-gray-300 focus:ring-realtalk-blue/30"
+                  />
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden />
+                  <span className="text-sm font-medium text-gray-700">
+                    {getSignalLabel(type)} ({count})
+                  </span>
+                </label>
               );
             })}
-          </select>
+          </div>
         </div>
         
-        {/* Selected Signal Statistics */}
-        {selectedSignalType !== 'all' && selectedSignalStats && (() => {
-          const signalColor = SIGNAL_COLORS[selectedSignalType] || '#6164F0';
-          return (
-            <div className="mt-4 rounded-lg p-4 border-2 border-realtalk-blue/40 bg-gradient-to-br from-realtalk-blue/15 via-purple-500/10 to-turquoise-500/15 shadow-lg">
-              <h3 className="text-sm font-semibold text-realtalk-blue mb-3 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: signalColor }}></div>
-                {getSignalLabel(selectedSignalType)} Analysis
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
-                  <div className="text-xs text-gray-600 mb-1 font-medium">Count</div>
-                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.count}</div>
-                </div>
-                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
-                  <div className="text-xs text-gray-600 mb-1 font-medium">Average Intensity</div>
-                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.average}%</div>
-                </div>
-                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
-                  <div className="text-xs text-gray-600 mb-1 font-medium">Min Intensity</div>
-                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.min}%</div>
-                </div>
-                <div className="bg-white/60 rounded-lg p-2 border border-gray-200/50">
-                  <div className="text-xs text-gray-600 mb-1 font-medium">Max Intensity</div>
-                  <div className="text-lg font-bold" style={{ color: signalColor }}>{selectedSignalStats.max}%</div>
-                </div>
-              </div>
+        {/* Selected Signal Statistics (for each selected type except Confidence) */}
+        {selectedSignalStatsList.length > 0 && (
+          <div className="mt-4 rounded-lg p-4 border-2 border-realtalk-blue/40 bg-gradient-to-br from-realtalk-blue/15 via-purple-500/10 to-turquoise-500/15 shadow-lg">
+            <h3 className="text-sm font-semibold text-realtalk-blue mb-3">Signal stats</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {selectedSignalStatsList.map(({ signalType, stats }) => {
+                const signalColor = SIGNAL_COLORS[signalType] || '#6164F0';
+                return (
+                  <div key={signalType} className="bg-white/60 rounded-lg p-3 border border-gray-200/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: signalColor }} />
+                      <span className="text-sm font-semibold" style={{ color: signalColor }}>{getSignalLabel(signalType)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-gray-600">Count</span> <span className="font-bold">{stats.count}</span></div>
+                      <div><span className="text-gray-600">Avg</span> <span className="font-bold">{stats.average}%</span></div>
+                      <div><span className="text-gray-600">Min</span> <span className="font-bold">{stats.min}%</span></div>
+                      <div><span className="text-gray-600">Max</span> <span className="font-bold">{stats.max}%</span></div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })()}
+          </div>
+        )}
       </div>
+
+      
 
       {/* Timeline Container */}
       <div className="relative w-full">
         {/* Chart */}
-        {chartDataPoints.length > 0 && (
+        {hasAnyChartData && (
           <div className="relative mb-6 bg-gradient-to-br from-gray-100 via-white to-gray-50 rounded-lg border-2 border-gray-300 shadow-inner p-4" style={{ minHeight: '450px' }}>
             <svg
               width="100%"
@@ -397,9 +423,9 @@ export default function TimelineReport({
                 className="pointer-events-none"
                 style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
               >
-                {selectedSignalType === 'all' || !selectedSignalType
-                  ? 'Confidence Score'
-                  : `${getSignalLabel(selectedSignalType)} Intensity`}
+                {chartSeries.length === 1
+                  ? chartSeries[0].label + (chartSeries[0].seriesKey === 'all' ? '' : ' Intensity')
+                  : 'Compare signals'}
               </text>
               
               {/* Chart area bounds - left margin 60, right margin 40, top margin 70, bottom margin 80 */}
@@ -496,70 +522,63 @@ export default function TimelineReport({
                 strokeWidth="1"
               />
               
-              {/* Chart line */}
-              {chartDataPoints.length > 1 && (() => {
-                const lineColor = selectedSignalType === 'all' || !selectedSignalType
-                  ? '#6164F0'
-                  : (SIGNAL_COLORS[selectedSignalType] || '#6164F0');
+              {/* Chart lines (one per series) */}
+              {chartSeries.map((series) => {
+                if (series.dataPoints.length < 2) return null;
+                const strokeWidth = chartSeries.length > 3 ? 2 : 2.5;
+                const r = chartSeries.length > 4 ? 2 : 3;
                 return (
-                  <path
-                    d={chartDataPoints.map((point, index) => {
+                  <g key={series.seriesKey}>
+                    <path
+                      d={series.dataPoints.map((point, index) => {
+                        const x = 60 + (point.time / sessionDuration) * 700;
+                        const y = 270 - (point.value / 100) * 200;
+                        return index === 0 ? `M ${x},${y}` : `L ${x},${y}`;
+                      }).join(' ')}
+                      fill="none"
+                      stroke={series.color}
+                      strokeWidth={strokeWidth}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="drop-shadow-sm"
+                      style={{ filter: `drop-shadow(0 0 2px ${series.color}80)` }}
+                    />
+                    {series.dataPoints.map((point, index) => {
                       const x = 60 + (point.time / sessionDuration) * 700;
                       const y = 270 - (point.value / 100) * 200;
-                      return index === 0 ? `M ${x},${y}` : `L ${x},${y}`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke={lineColor}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="drop-shadow-lg"
-                    style={{ filter: `drop-shadow(0 0 4px ${lineColor}80)` }}
-                  />
-                );
-              })()}
-              
-              {/* Chart area fill */}
-              {chartDataPoints.length > 1 && (() => {
-                const gradientId = selectedSignalType === 'all' || !selectedSignalType
-                  ? 'confidenceGradient'
-                  : `signalGradient-${selectedSignalType}`;
-                return (
-                  <path
-                    d={`M ${60 + (chartDataPoints[0].time / sessionDuration) * 700},270 L ${chartDataPoints.map((point) => {
-                      const x = 60 + (point.time / sessionDuration) * 700;
-                      const y = 270 - (point.value / 100) * 200;
-                      return `${x},${y}`;
-                    }).join(' L ')} L ${60 + (chartDataPoints[chartDataPoints.length - 1].time / sessionDuration) * 700},270 Z`}
-                    fill={`url(#${gradientId})`}
-                    opacity="0.2"
-                  />
-                );
-              })()}
-              
-              {/* Data points */}
-              {chartDataPoints.map((point, index) => {
-                const x = 60 + (point.time / sessionDuration) * 700;
-                const y = 270 - (point.value / 100) * 200;
-                const pointColor = selectedSignalType === 'all' || !selectedSignalType
-                  ? '#6164F0'
-                  : (SIGNAL_COLORS[selectedSignalType] || '#6164F0');
-                return (
-                  <circle
-                    key={index}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill={pointColor}
-                    stroke="#fff"
-                    strokeWidth="1.5"
-                    className="hover:r-4 transition-all"
-                    style={{ filter: `drop-shadow(0 0 4px ${pointColor}80)` }}
-                  />
+                      return (
+                        <circle
+                          key={`${series.seriesKey}-${index}`}
+                          cx={x}
+                          cy={y}
+                          r={r}
+                          fill={series.color}
+                          stroke="#fff"
+                          strokeWidth="1"
+                          className="transition-all"
+                          style={{ filter: `drop-shadow(0 0 2px ${series.color}80)` }}
+                        />
+                      );
+                    })}
+                  </g>
                 );
               })}
               
             </svg>
+            {/* Legend */}
+            {chartSeries.length > 0 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-wrap justify-center gap-4 px-4 py-2 rounded-lg bg-white/80 border border-gray-200/80 shadow-sm">
+                {chartSeries.map((series) => (
+                  <div key={series.seriesKey} className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-0.5 rounded-full shrink-0"
+                      style={{ backgroundColor: series.color, minWidth: 16 }}
+                    />
+                    <span className="text-xs font-medium text-gray-700">{series.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -585,6 +604,49 @@ export default function TimelineReport({
           </div>
         )}
 
+      </div>
+      
+{/* Emotional attributes radar chart – 5 configurable attributes by scenario */}
+<div className="mb-8 rounded-xl border-2 border-realtalk-blue/30 bg-gradient-to-br from-realtalk-blue/10 via-purple-500/5 to-turquoise-500/10 p-4 md:p-6 shadow-lg">
+        <h3 
+          className="text-lg md:text-xl font-bold mb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent"
+          style={{
+            backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+          }}>
+          Emotional attributes
+        </h3>
+        <p className="text-sm text-gray-600 mb-4 max-w-2xl">
+          These five attributes are one lens on your communication. Successful communication looks different in different contexts and for different communicators—choose the scenario that fits your situation.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
+          <label htmlFor="radar-scenario-select" className="text-sm font-semibold text-realtalk-blue whitespace-nowrap">
+            Scenario:
+          </label>
+          <select
+            id="radar-scenario-select"
+            value={radarScenarioId}
+            onChange={(e) => setRadarScenarioId(e.target.value)}
+            className="flex-1 min-w-0 px-4 py-2.5 bg-gradient-to-r from-realtalk-blue/10 to-purple-500/10 border-2 border-realtalk-blue/30 rounded-lg text-realtalk-blue font-semibold placeholder-gray-400 focus:outline-none focus:border-realtalk-blue focus:ring-2 focus:ring-realtalk-blue/30"
+          >
+            {RADAR_SCENARIOS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-center">
+          <EmotionalRadarChart
+            data={radarData}
+            size={320}
+            className="max-w-full"
+            fillColor="#6164F0"
+            strokeColor="#5442b3"
+          />
+        </div>
       </div>
 
       {/* Rating and Feedback Section */}

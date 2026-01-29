@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "./lib/session-context";
+import { TranscriptProvider } from "./lib/transcript-context";
 import NavigationBar from "./components/NavigationBar";
 
 const inter = Inter({ 
@@ -24,8 +25,10 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body>
         <SessionProvider>
-          <NavigationBar />
-          {children}
+          <TranscriptProvider>
+            <NavigationBar />
+            {children}
+          </TranscriptProvider>
         </SessionProvider>
       </body>
     </html>

@@ -1,0 +1,61 @@
+type,category,text,options,correct_answer
+multiple_choice,maths,"What is 17 × 4?","[{""letter"":""A"",""text"":""64""},{""letter"":""B"",""text"":""68""},{""letter"":""C"",""text"":""72""}]",B
+multiple_choice,maths,"If 3x + 7 = 22, what is x?","[{""letter"":""A"",""text"":""4""},{""letter"":""B"",""text"":""5""},{""letter"":""C"",""text"":""6""}]",B
+multiple_choice,maths,"What is 15% of 80?","[{""letter"":""A"",""text"":""10""},{""letter"":""B"",""text"":""12""},{""letter"":""C"",""text"":""15""}]",B
+multiple_choice,maths,"How many seconds are in 2.5 minutes?","[{""letter"":""A"",""text"":""120""},{""letter"":""B"",""text"":""150""},{""letter"":""C"",""text"":""180""}]",B
+multiple_choice,maths,"What is the square root of 144?","[{""letter"":""A"",""text"":""10""},{""letter"":""B"",""text"":""12""},{""letter"":""C"",""text"":""14""}]",B
+multiple_choice,maths,"A shirt costs 40. After a 25% discount, what is the new price?","[{""letter"":""A"",""text"":""28""},{""letter"":""B"",""text"":""30""},{""letter"":""C"",""text"":""32""}]",B
+multiple_choice,maths,"What is 2 to the power of 6?","[{""letter"":""A"",""text"":""32""},{""letter"":""B"",""text"":""64""},{""letter"":""C"",""text"":""128""}]",B
+multiple_choice,maths,"If 5 machines make 5 parts in 5 minutes, how many minutes for 100 machines to make 100 parts?","[{""letter"":""A"",""text"":""5""},{""letter"":""B"",""text"":""10""},{""letter"":""C"",""text"":""100""}]",A
+multiple_choice,maths,"What is the next number: 2, 6, 12, 20, 30, ?","[{""letter"":""A"",""text"":""40""},{""letter"":""B"",""text"":""42""},{""letter"":""C"",""text"":""44""}]",B
+multiple_choice,maths,"How many prime numbers are there between 10 and 20?","[{""letter"":""A"",""text"":""3""},{""letter"":""B"",""text"":""4""},{""letter"":""C"",""text"":""5""}]",B
+multiple_choice,sports,"How many players from one team are on the field in association football (soccer)?","[{""letter"":""A"",""text"":""9""},{""letter"":""B"",""text"":""11""},{""letter"":""C"",""text"":""13""}]",B
+multiple_choice,sports,"How many rings are on the Olympic flag?","[{""letter"":""A"",""text"":""4""},{""letter"":""B"",""text"":""5""},{""letter"":""C"",""text"":""6""}]",B
+multiple_choice,sports,"What is the approximate length of a marathon in kilometres?","[{""letter"":""A"",""text"":""21""},{""letter"":""B"",""text"":""42""},{""letter"":""C"",""text"":""50""}]",B
+multiple_choice,sports,"Which sport uses a shuttlecock?","[{""letter"":""A"",""text"":""Tennis""},{""letter"":""B"",""text"":""Badminton""},{""letter"":""C"",""text"":""Squash""}]",B
+multiple_choice,sports,"How many players from one team are on the court in basketball?","[{""letter"":""A"",""text"":""4""},{""letter"":""B"",""text"":""5""},{""letter"":""C"",""text"":""6""}]",B
+multiple_choice,sports,"In which sport is a ""try"" a way of scoring?","[{""letter"":""A"",""text"":""Football""},{""letter"":""B"",""text"":""Rugby""},{""letter"":""C"",""text"":""Hockey""}]",B
+multiple_choice,sports,"What colour is the centre of a standard archery target?","[{""letter"":""A"",""text"":""Red""},{""letter"":""B"",""text"":""Gold""},{""letter"":""C"",""text"":""Black""}]",B
+multiple_choice,sports,"How many lanes are there in an Olympic swimming final?","[{""letter"":""A"",""text"":""6""},{""letter"":""B"",""text"":""8""},{""letter"":""C"",""text"":""10""}]",B
+multiple_choice,sports,"In tennis, how many points are needed to win a standard game (without deuce)?","[{""letter"":""A"",""text"":""3""},{""letter"":""B"",""text"":""4""},{""letter"":""C"",""text"":""5""}]",B
+multiple_choice,sports,"Which of these is an event in the decathlon?","[{""letter"":""A"",""text"":""Swimming""},{""letter"":""B"",""text"":""Long jump""},{""letter"":""C"",""text"":""Cycling""}]",B
+multiple_choice,pub_quiz,"How many continents are there on Earth?","[{""letter"":""A"",""text"":""5""},{""letter"":""B"",""text"":""7""},{""letter"":""C"",""text"":""9""}]",B
+multiple_choice,pub_quiz,"What is the largest planet in our solar system?","[{""letter"":""A"",""text"":""Mars""},{""letter"":""B"",""text"":""Jupiter""},{""letter"":""C"",""text"":""Saturn""}]",B
+multiple_choice,pub_quiz,"Which planet is closest to the Sun?","[{""letter"":""A"",""text"":""Venus""},{""letter"":""B"",""text"":""Mercury""},{""letter"":""C"",""text"":""Earth""}]",B
+multiple_choice,pub_quiz,"How many sides does a hexagon have?","[{""letter"":""A"",""text"":""5""},{""letter"":""B"",""text"":""6""},{""letter"":""C"",""text"":""8""}]",B
+multiple_choice,pub_quiz,"What is the chemical symbol for water?","[{""letter"":""A"",""text"":""H2O""},{""letter"":""B"",""text"":""CO2""},{""letter"":""C"",""text"":""O2""}]",A
+multiple_choice,pub_quiz,"Which organ pumps blood through the human body?","[{""letter"":""A"",""text"":""Lungs""},{""letter"":""B"",""text"":""Heart""},{""letter"":""C"",""text"":""Liver""}]",B
+multiple_choice,pub_quiz,"In which direction does the Sun rise?","[{""letter"":""A"",""text"":""West""},{""letter"":""B"",""text"":""East""},{""letter"":""C"",""text"":""North""}]",B
+multiple_choice,pub_quiz,"How many days are in a leap year?","[{""letter"":""A"",""text"":""364""},{""letter"":""B"",""text"":""365""},{""letter"":""C"",""text"":""366""}]",C
+multiple_choice,pub_quiz,"What is the freezing point of water in Celsius?","[{""letter"":""A"",""text"":""-1""},{""letter"":""B"",""text"":""0""},{""letter"":""C"",""text"":""1""}]",B
+multiple_choice,pub_quiz,"Which gas do plants absorb from the air for photosynthesis?","[{""letter"":""A"",""text"":""Oxygen""},{""letter"":""B"",""text"":""Nitrogen""},{""letter"":""C"",""text"":""Carbon dioxide""}]",C
+multiple_choice,science,"What is the chemical symbol for gold?","[{""letter"":""A"",""text"":""Go""},{""letter"":""B"",""text"":""Au""},{""letter"":""C"",""text"":""Gd""}]",B
+multiple_choice,science,"At what speed does light travel in a vacuum (approximately)?","[{""letter"":""A"",""text"":""300,000 km per second""},{""letter"":""B"",""text"":""150,000 km per second""},{""letter"":""C"",""text"":""30,000 km per second""}]",A
+multiple_choice,science,"What is the smallest unit of life?","[{""letter"":""A"",""text"":""Atom""},{""letter"":""B"",""text"":""Cell""},{""letter"":""C"",""text"":""Molecule""}]",B
+multiple_choice,science,"Which subatomic particle has a positive charge?","[{""letter"":""A"",""text"":""Electron""},{""letter"":""B"",""text"":""Neutron""},{""letter"":""C"",""text"":""Proton""}]",C
+multiple_choice,science,"What force keeps planets in orbit around the Sun?","[{""letter"":""A"",""text"":""Magnetism""},{""letter"":""B"",""text"":""Gravity""},{""letter"":""C"",""text"":""Friction""}]",B
+multiple_choice,science,"Which vitamin is produced when skin is exposed to sunlight?","[{""letter"":""A"",""text"":""Vitamin A""},{""letter"":""B"",""text"":""Vitamin C""},{""letter"":""C"",""text"":""Vitamin D""}]",C
+multiple_choice,science,"What is the main gas in Earth's atmosphere?","[{""letter"":""A"",""text"":""Oxygen""},{""letter"":""B"",""text"":""Nitrogen""},{""letter"":""C"",""text"":""Carbon dioxide""}]",B
+multiple_choice,science,"In which layer of Earth do we find magma?","[{""letter"":""A"",""text"":""Crust""},{""letter"":""B"",""text"":""Mantle""},{""letter"":""C"",""text"":""Core""}]",B
+multiple_choice,science,"What type of rock is formed from cooled lava?","[{""letter"":""A"",""text"":""Sedimentary""},{""letter"":""B"",""text"":""Metamorphic""},{""letter"":""C"",""text"":""Igneous""}]",C
+multiple_choice,science,"Which planet is known as the Red Planet?","[{""letter"":""A"",""text"":""Venus""},{""letter"":""B"",""text"":""Mars""},{""letter"":""C"",""text"":""Jupiter""}]",B
+multiple_choice,reasoning,"If all roses are flowers and some flowers fade, can we conclude that some roses fade?","[{""letter"":""A"",""text"":""Yes, always""},{""letter"":""B"",""text"":""No, not necessarily""},{""letter"":""C"",""text"":""Only in summer""}]",B
+multiple_choice,reasoning,"What comes next: North, East, South, ?","[{""letter"":""A"",""text"":""West""},{""letter"":""B"",""text"":""Up""},{""letter"":""C"",""text"":""North""}]",A
+multiple_choice,reasoning,"If today is Monday, what day is it in 3 days?","[{""letter"":""A"",""text"":""Wednesday""},{""letter"":""B"",""text"":""Thursday""},{""letter"":""C"",""text"":""Friday""}]",B
+multiple_choice,reasoning,"Which word does not belong: apple, banana, carrot, orange?","[{""letter"":""A"",""text"":""Apple""},{""letter"":""B"",""text"":""Banana""},{""letter"":""C"",""text"":""Carrot""}]",C
+multiple_choice,reasoning,"If A is 1 and B is 2, what is the sum of the letters in CAT?","[{""letter"":""A"",""text"":""24""},{""letter"":""B"",""text"":""23""},{""letter"":""C"",""text"":""22""}]",A
+multiple_choice,reasoning,"Complete the pattern: 1, 1, 2, 3, 5, 8, ?","[{""letter"":""A"",""text"":""11""},{""letter"":""B"",""text"":""13""},{""letter"":""C"",""text"":""15""}]",B
+multiple_choice,reasoning,"If you have 3 boxes and each box has 4 bags and each bag has 5 coins, how many coins in total?","[{""letter"":""A"",""text"":""12""},{""letter"":""B"",""text"":""60""},{""letter"":""C"",""text"":""20""}]",B
+multiple_choice,reasoning,"Which is the odd one out: circle, square, triangle, rectangle?","[{""letter"":""A"",""text"":""Circle""},{""letter"":""B"",""text"":""Square""},{""letter"":""C"",""text"":""Triangle""}]",A
+multiple_choice,reasoning,"A bat and ball cost 1.10 in total. The bat costs 1.00 more than the ball. How much does the ball cost?","[{""letter"":""A"",""text"":""0.05""},{""letter"":""B"",""text"":""0.10""},{""letter"":""C"",""text"":""0.15""}]",A
+multiple_choice,reasoning,"In a race you pass the person in second place. What position are you in now?","[{""letter"":""A"",""text"":""First""},{""letter"":""B"",""text"":""Second""},{""letter"":""C"",""text"":""Third""}]",B
+open_ended,open_ended,"What is your favourite food?","",""
+open_ended,open_ended,"What do you like to do in your free time?","",""
+open_ended,open_ended,"Describe your ideal day.","",""
+open_ended,open_ended,"What is something that made you smile recently?","",""
+open_ended,open_ended,"If you could visit anywhere in the world, where would you go?","",""
+open_ended,open_ended,"What is a skill you would like to learn?","",""
+open_ended,open_ended,"What do you find most relaxing?","",""
+open_ended,open_ended,"What is a place you feel most comfortable?","",""
+open_ended,open_ended,"What is something you are grateful for today?","",""
+open_ended,open_ended,"How do you like to spend a quiet evening?","",""

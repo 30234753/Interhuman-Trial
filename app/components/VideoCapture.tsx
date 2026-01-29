@@ -55,6 +55,7 @@ export default function VideoCapture({
     }
 
     setIsStreaming(false);
+    hasAttemptedAutoStart.current = false; // Allow auto-start again when session restarts
     // Don't clear error here - let it persist
     onStreamStop?.();
   }, [onStreamStop]);

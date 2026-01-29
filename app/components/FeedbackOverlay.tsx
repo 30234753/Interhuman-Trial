@@ -104,12 +104,12 @@ export default function FeedbackOverlay({
         );
       })}
 
-      {/* Optional: Display a summary indicator showing overall state */}
+      {/* Optional: Display a summary indicator above the question bar so it stays visible */}
       {sortedSignals.length > 0 && (
-        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 glass-dark px-4 py-2 rounded-full pointer-events-auto border border-white/10 animate-scale-in backdrop-blur-xl">
+        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 glass-dark px-4 py-2 rounded-full pointer-events-auto border border-gray-300/30 animate-scale-in backdrop-blur-xl">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-white text-xs font-semibold tracking-wide">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-gray-900 text-xs font-semibold tracking-wide">
               {sortedSignals.length} signal{sortedSignals.length !== 1 ? 's' : ''} active
             </span>
           </div>

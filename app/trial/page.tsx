@@ -4,23 +4,65 @@ import VideoPlayer from '../components/VideoPlayer';
 import SessionControls from '../components/SessionControls';
 import SessionSummary from '../components/SessionSummary';
 import TrialConsentModal from '../components/TrialConsentModal';
+import QuestionPopUp from '../components/QuestionPopUp';
 import { useState, useEffect, useRef } from 'react';
-import { BehavioralSignal } from '../lib/types';
+import { BehavioralSignal, Question } from '../lib/types';
 import { useSession } from '../lib/session-context';
 import { useRouter } from 'next/navigation';
+
+/** Session script: MC first, then open-ended (order by type) */
+function sortQuestionsForScript(questions: Question[]): Question[] {
+  return [...questions].sort((a, b) => {
+    if (a.type === 'multiple_choice' && b.type === 'open_ended') return -1;
+    if (a.type === 'open_ended' && b.type === 'multiple_choice') return 1;
+    return 0;
+  });
+}
 
 export default function TrialPage() {
   const router = useRouter();
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
+  /** True when VideoPlayer has called onStreamReady (camera rolling). First question shows only after this. */
+  const [streamReady, setStreamReady] = useState<boolean>(false);
+  /** Questions for this run (loaded from API, ordered MC then open-ended). */
+  const [questions, setQuestions] = useState<Question[]>([]);
+  /** Current question index in the script; -1 = none, 0..n-1 = current. */
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
     startTime: number;
     endTime: number;
   } | null>(null);
   const [liveEndTime, setLiveEndTime] = useState<number>(Date.now());
-  const { updateSignals, isActive: sessionActive, sessionState } = useSession();
+  const { updateSignals, isActive: sessionActive, sessionState, stopSession } = useSession();
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
+
+  // Load questions from API on mount (session script: MC then open-ended)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/questions')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch questions'))))
+      .then((data: Question[]) => {
+        if (!cancelled) setQuestions(sortQuestionsForScript(data));
+      })
+      .catch((err) => {
+        if (!cancelled) console.error('Error loading questions:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Show first question only when session is active AND camera stream is ready (so analysis can run)
+  useEffect(() => {
+    if (sessionActive && streamReady && questions.length > 0 && currentQuestionIndex === -1) {
+      setCurrentQuestionIndex(0);
+    }
+  }, [sessionActive, streamReady, questions.length, currentQuestionIndex]);
+
+  // Answer window: run analysis only while a question pop-up is shown
+  const showingPopUp = sessionActive && currentQuestionIndex >= 0 && currentQuestionIndex < questions.length;
 
   // Preserve session data before it's cleared
   useEffect(() => {
@@ -44,6 +86,7 @@ export default function TrialPage() {
     
     // Detect when session transitions from active to inactive (session ending)
     if (previousActiveState.current && !sessionActive) {
+      setCurrentQuestionIndex(-1);
       const endTime = Date.now();
       
       // Use preserved data if current state is already cleared
@@ -93,6 +136,43 @@ export default function TrialPage() {
     setSummaryData(null);
   };
 
+  /** Save answer via API and advance to next question or end session. */
+  const handleQuestionAnswer = async (
+    windowStart: number,
+    windowEnd: number,
+    spokenAnswer: string,
+    correct: boolean | null
+  ) => {
+    const sessionId = sessionState.sessionId;
+    const question = questions[currentQuestionIndex];
+    if (!sessionId || !question) return;
+
+    try {
+      const res = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addAnswer',
+          sessionId,
+          questionId: question.id,
+          startTime: windowStart,
+          endTime: windowEnd,
+          spokenAnswer,
+          correct: correct === true || correct === false ? correct : null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save answer');
+    } catch (err) {
+      console.error('Error saving session answer:', err);
+    }
+
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex >= questions.length) {
+      await stopSession();
+    } else {
+      setCurrentQuestionIndex(nextIndex);
+    }
+  };
 
   return (
     <>
@@ -131,15 +211,17 @@ export default function TrialPage() {
         {/* Video Player and Session Summary - Side by Side */}
         <div className="w-full grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           {/* Video Player Container - Main Focus */}
-          <div className="w-full">
-            <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-gray-200 shadow-2xl">
+          <div className="w-full relative">
+            <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-gray-200 shadow-2xl relative">
               <VideoPlayer
-                autoStart={false}
+                autoStart={sessionActive}
                 enabled={true}
+                answerWindowActive={showingPopUp}
                 analysisInterval={2000}
                 onStreamReady={(stream) => {
                   console.log('Stream ready:', stream);
                   setStreamStatus('Streaming active - Analysis enabled');
+                  setStreamReady(true);
                 }}
                 onStreamError={(error) => {
                   console.error('Stream error:', error);
@@ -148,6 +230,7 @@ export default function TrialPage() {
                 onStreamStop={() => {
                   console.log('Stream stopped');
                   setStreamStatus('Stream stopped');
+                  setStreamReady(false);
                 }}
                 onSignalsUpdate={(signals) => {
                   console.log('Signals updated:', signals);
@@ -158,6 +241,13 @@ export default function TrialPage() {
                 }}
                 className="w-full aspect-square rounded-lg overflow-hidden border-2 border-gray-200"
               />
+              {showingPopUp && questions[currentQuestionIndex] && (
+                <QuestionPopUp
+                  question={questions[currentQuestionIndex]}
+                  onAnswer={handleQuestionAnswer}
+                  timeoutSeconds={20}
+                />
+              )}
             </div>
           </div>
 
