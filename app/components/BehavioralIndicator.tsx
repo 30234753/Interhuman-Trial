@@ -115,11 +115,11 @@ export default function BehavioralIndicator({
   // Format signal type name
   const signalName = signal.type.charAt(0).toUpperCase() + signal.type.slice(1);
 
-  // Custom positioning style: above question bar (question bar ~56px; place indicators at 96px+ from bottom)
+  // Custom positioning style: above transcript bar (reserve ~120px for live transcript so signals don't overlap)
   const customStyle = position === 'custom' 
     ? { 
         transform: `translate(calc(-50% + ${customOffset}px), 0)`,
-        bottom: `${96 + customVerticalOffset}px`,
+        bottom: `${150 + customVerticalOffset}px`,
       }
     : {};
 

@@ -373,7 +373,7 @@ export default function Subtitles({
   }
 
   return (
-    <div className={`absolute bottom-0 left-0 right-0 z-30 ${className}`}>
+    <div className={`absolute bottom-[3rem] left-0 right-0 z-40 ${className}`}>
       {/* Subtitles Container */}
       <div className="glass-dark rounded-t-lg px-4 py-3 backdrop-blur-xl border-t border-white/10 border-l border-r border-white/5 shadow-2xl">
         <div className="flex items-start justify-between gap-3">

@@ -10,13 +10,21 @@ import { BehavioralSignal, Question } from '../lib/types';
 import { useSession } from '../lib/session-context';
 import { useRouter } from 'next/navigation';
 
-/** Session script: MC first, then open-ended (order by type) */
-function sortQuestionsForScript(questions: Question[]): Question[] {
-  return [...questions].sort((a, b) => {
-    if (a.type === 'multiple_choice' && b.type === 'open_ended') return -1;
-    if (a.type === 'open_ended' && b.type === 'multiple_choice') return 1;
-    return 0;
-  });
+const QUESTIONS_PER_SESSION = 10;
+
+/** Fisher–Yates shuffle (mutates array). */
+function shuffleInPlace<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+/** Randomise order and limit to QUESTIONS_PER_SESSION. */
+function pickQuestionsForSession(questions: Question[]): Question[] {
+  const copy = [...questions];
+  shuffleInPlace(copy);
+  return copy.slice(0, QUESTIONS_PER_SESSION);
 }
 
 export default function TrialPage() {
@@ -38,13 +46,13 @@ export default function TrialPage() {
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
 
-  // Load questions from API on mount (session script: MC then open-ended)
+  // Load questions from API on mount; randomise and limit to QUESTIONS_PER_SESSION
   useEffect(() => {
     let cancelled = false;
     fetch('/api/questions')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch questions'))))
       .then((data: Question[]) => {
-        if (!cancelled) setQuestions(sortQuestionsForScript(data));
+        if (!cancelled) setQuestions(pickQuestionsForSession(data));
       })
       .catch((err) => {
         if (!cancelled) console.error('Error loading questions:', err);
@@ -244,6 +252,7 @@ export default function TrialPage() {
               {showingPopUp && questions[currentQuestionIndex] && (
                 <QuestionPopUp
                   question={questions[currentQuestionIndex]}
+                  questionNumber={currentQuestionIndex + 1}
                   onAnswer={handleQuestionAnswer}
                   timeoutSeconds={20}
                 />

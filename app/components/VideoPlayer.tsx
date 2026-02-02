@@ -652,11 +652,11 @@ export default function VideoPlayer({
         compact={false}
       />
 
-      {/* Subtitles overlay – fixed padding so position doesn't jolt when signals appear */}
+      {/* Subtitles overlay - reserved bottom zone so signals (positioned above) don't overlap */}
       <Subtitles
         enabled={enabled && isStreamActiveRef.current}
         stream={currentStream}
-        className="pb-20"
+        className="min-h-[5rem]"
       />
 
       {/* Analysis status indicator */}

@@ -8,7 +8,6 @@ const DEFAULT_TIMEOUT_SECONDS = 20;
 
 /** Letters that can be parsed (only those in the question's options, e.g. A,B,C). */
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
-const WORD_TO_LETTER: Record<string, string> = { one: 'A', two: 'B', three: 'C', four: 'D' };
 /** "C" is often misheard as "say" or "see" – treat these as C when C is allowed. */
 const C_SOUNDALIKES = ['say', 'see', 'sea'];
 
@@ -33,25 +32,14 @@ function parseSpokenNumber(text: string): string | null {
   if (words.length === 0) return null;
   if (words.length === 1 && words[0] === 'a') return null; // "a" alone not a number
 
-  // "a hundred [and] Y" (e.g. "a hundred and fifty" → 150) – treat "a" as "one"
-  if (words.length >= 2 && words[0] === 'a' && words[1] === 'hundred') {
-    let value = 100;
-    if (words.length > 2) {
-      const rest = words.slice(2).join(' ');
-      const restNum = parseSpokenNumber(rest);
-      if (restNum !== null) value += parseInt(restNum, 10);
-    }
-    return String(value);
-  }
-
   // "hundred" or "one hundred" → 100
   if (words.length === 1 && words[0] === 'hundred') return '100';
   if (words.length === 2 && words[0] === 'one' && words[1] === 'hundred') return '100';
 
   // X hundred [and] Y (e.g. "two hundred", "two hundred and five", "two hundred and forty two")
   const hundredIdx = words.indexOf('hundred');
-  if (hundredIdx >= 0 && (words[0] in ONES || words[0] === 'a')) {
-    const hundreds = words[0] === 'a' ? 1 : ONES[words[0] as keyof typeof ONES];
+  if (hundredIdx >= 0 && words[0] in ONES) {
+    const hundreds = ONES[words[0] as keyof typeof ONES];
     if (hundreds >= 1 && hundreds <= 9) {
       let value = hundreds * 100;
       if (hundredIdx + 1 < words.length) {
@@ -83,11 +71,9 @@ function optionTextToNumber(optText: string): string | null {
   return parseSpokenNumber(norm);
 }
 
-/** Extract a number from anywhere in the chunk (e.g. "At twelve." → "12", "A hundred and fifty." → "150"). */
+/** Extract a number from anywhere in the chunk (e.g. "At twelve." → "12", "I think forty two" → "42"). */
 function extractNumberFromChunk(chunk: string): string | null {
   const t = chunk.trim().toLowerCase().replace(/[.,!?]$/, '').replace(/[^\w\s]/g, ' ').trim();
-  const full = parseSpokenNumber(t);
-  if (full !== null) return full;
   const words = t.split(/\s+/).filter(Boolean);
   for (let i = 0; i < words.length; i++) {
     const single = parseSpokenNumber(words[i]);
@@ -122,7 +108,7 @@ function parseMultipleChoiceAnswer(
     }
   }
 
-  // 2. Spoken/digit number ↔ option text (full chunk or number extracted from chunk: "at twelve" → 12)
+  // 2. Spoken/digit number ↔ option text (e.g. "twelve" or "42" matches option "12" or "42") – not position-based
   if (options?.length) {
     const chunkNum = parseSpokenNumber(t) ?? extractNumberFromChunk(t);
     if (chunkNum !== null) {
@@ -134,41 +120,22 @@ function parseMultipleChoiceAnswer(
     }
   }
 
-  // 3. Position: 1/one→A, 2/two→B, 3/three→C, 4/four→D (first, second, third, fourth option)
-  if (options?.length) {
-    const chunkNum = parseSpokenNumber(t) ?? extractNumberFromChunk(t);
-    if (chunkNum !== null) {
-      const idx = ['1', '2', '3', '4'].indexOf(chunkNum);
-      if (idx >= 0 && options[idx]) return options[idx].letter;
-    }
-  }
-
-  // 4. Single letter A/B/C/D (skip standalone "a"/"A" when options are all numeric – "a" may start "a hundred and fifty")
+  // 3. Single letter A/B/C/D or "option A", "letter B", etc.
   const single = t.match(/^([abcd])$/);
   if (single) {
     const letter = single[1].toUpperCase();
-    if (letter === 'A' && options?.length) {
-      const allNumeric = options.every((o) => optionTextToNumber(o.text) !== null);
-      if (allNumeric) return null; // prefer number extraction for "a hundred..."
-    }
     return allowedSet.has(letter) ? letter : null;
   }
-  // "option A", "letter B", etc. (skip "a" when options all numeric – could be "a hundred and fifty")
   const optionMatch = t.match(/\b(option\s*)?(a|b|c|d)\b/);
   if (optionMatch) {
     const letter = optionMatch[2].toUpperCase();
-    if (letter === 'A' && options?.length && options.every((o) => optionTextToNumber(o.text) !== null)) return null;
     return allowedSet.has(letter) ? letter : null;
   }
 
-  // 5. Number words one→A, two→B, three→C, four→D (position)
-  const letter = WORD_TO_LETTER[word];
-  if (letter && allowedSet.has(letter)) return letter;
-
-  // 6. C is often misheard as "say" or "see"
+  // 4. C is often misheard as "say" or "see"
   if (allowedSet.has('C') && C_SOUNDALIKES.includes(word)) return 'C';
 
-  // 7. Option text: number anywhere in chunk (e.g. "at twelve" → 12 matches option "12")
+  // 5. Option text: number anywhere in chunk (e.g. "at twelve" → 12 matches option "12")
   if (options?.length) {
     const chunkNum = parseSpokenNumber(t) ?? extractNumberFromChunk(t);
     for (const opt of options) {
@@ -186,6 +153,8 @@ function parseMultipleChoiceAnswer(
 
 export interface QuestionPopUpProps {
   question: Question;
+  /** 1-based index for display (e.g. "Question 1", "Question 2"). Optional. */
+  questionNumber?: number;
   /** Called when the answer window starts (on mount). Parent can set answerWindowActive = true, clear transcript, etc. */
   onWindowStart?: () => void;
   /** Called when user answers or timeout. Parent should set answerWindowActive = false and save answer. */
@@ -201,6 +170,7 @@ export interface QuestionPopUpProps {
 
 export default function QuestionPopUp({
   question,
+  questionNumber,
   onWindowStart,
   onAnswer,
   timeoutSeconds = DEFAULT_TIMEOUT_SECONDS,
@@ -281,9 +251,6 @@ export default function QuestionPopUp({
 
     const unsubscribe = subscribeToFinalChunk((chunk) => {
       const letter = parseMultipleChoiceAnswer(chunk, allowedLetters, question.options ?? undefined);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'QuestionPopUp.tsx:MC chunk',message:'Final chunk parsed',data:{chunk,letter,extractedNum:extractNumberFromChunk(chunk)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'twelve'})}).catch(()=>{});
-      // #endregion
       if (letter) setHighlightedLetter(letter);
     });
 
@@ -306,14 +273,21 @@ export default function QuestionPopUp({
   const options = question.options ?? [];
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-40 pointer-events-auto animate-fade-in min-h-[3.5rem]">
-      <div className="glass-dark rounded-t-lg px-4 py-3 backdrop-blur-xl border-t border-gray-300/50 border-l border-r border-gray-300/30 shadow-2xl min-h-[3.5rem]">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <p className="text-gray-900 text-sm font-medium flex-1 min-w-0 line-clamp-2" title={question.text}>
+    <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto animate-fade-in">
+      <div className="glass-dark rounded-t-lg px-4 py-3 backdrop-blur-xl border-t border-gray-300/50 border-l border-r border-gray-300/30 shadow-2xl">
+        {/* Question row: prefix + full text, separate above answers */}
+        <div className="mb-3">
+          <p className="text-gray-900 text-sm font-medium break-words" title={question.text}>
+            {questionNumber != null && (
+              <span className="text-realtalk-blue font-semibold mr-1.5">Question {questionNumber}:</span>
+            )}
             {question.text}
           </p>
+        </div>
+        {/* Answers row: options (or open-ended hint) + timer + Done */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {isMultipleChoice && options.length > 0 && (
-            <span className="flex flex-shrink-0 items-center gap-1.5 text-gray-700 text-xs sm:text-sm flex-wrap">
+            <span className="flex flex-1 flex-shrink-0 items-center gap-1.5 text-gray-700 text-xs sm:text-sm flex-wrap min-w-0">
               {options.map((opt, i) => (
                 <span
                   key={opt.letter}
@@ -337,8 +311,7 @@ export default function QuestionPopUp({
             <button
               type="button"
               onClick={handleDone}
-              disabled={isMultipleChoice && options.length > 0 && !highlightedLetter}
-              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors cursor-pointer pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
+              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors cursor-pointer pointer-events-auto"
             >
               Done
             </button>
