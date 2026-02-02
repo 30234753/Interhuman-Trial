@@ -1,6 +1,6 @@
 'use client';
 
-import { SessionData, BehavioralSignal, TranscriptChunk } from '@/app/lib/types';
+import { SessionData, BehavioralSignal, TranscriptChunk, SessionAnswer } from '@/app/lib/types';
 import { useState, useMemo } from 'react';
 import { calculateConfidenceScore, getSignalStatistics } from '@/app/lib/signal-aggregator';
 import { RADAR_SCENARIOS, getScenarioById, getRadarScores } from '@/app/lib/radar-attributes';
@@ -91,7 +91,7 @@ export default function TimelineReport({
   isSubmitting = false,
   isLocked = false,
 }: TimelineReportProps) {
-  const { signals, transcriptChunks = [], startTime, endTime } = sessionData;
+  const { signals, transcriptChunks = [], answers = [], startTime, endTime } = sessionData;
   const sessionDuration = endTime ? endTime - startTime : Date.now() - startTime;
   
   // State for selected signal types (multi-select: 'all' = Confidence Score, or signal type strings)
@@ -112,6 +112,8 @@ export default function TimelineReport({
   };
   // State for radar scenario (which 5 attributes to show)
   const [radarScenarioId, setRadarScenarioId] = useState<string>(RADAR_SCENARIOS[0]?.id ?? 'general');
+  // Carousel: current answer card index (Answers & signals per question)
+  const [answerCardIndex, setAnswerCardIndex] = useState(0);
   
   // Internal state for rating and feedback (used if not controlled externally)
   const [internalRating, setInternalRating] = useState<number | null>(externalRating ?? null);
@@ -145,15 +147,6 @@ export default function TimelineReport({
       normalizedTime: signal.timestamp - startTime,
     })),
     [signals, startTime]
-  );
-
-  const normalizedChunks = useMemo(() =>
-    transcriptChunks.map((chunk) => ({
-      ...chunk,
-      normalizedTime: chunk.timestamp - startTime,
-      normalizedEndTime: chunk.timestamp - startTime + 2000, // Assume 2s duration per chunk
-    })),
-    [transcriptChunks, startTime]
   );
 
   // Build chart series: one entry per selected type (confidence and/or signal types)
@@ -229,11 +222,6 @@ export default function TimelineReport({
     return Math.max(0, Math.min(100, (normalizedTime / sessionDuration) * 100));
   };
 
-  // Sort chunks by time for concatenation
-  const sortedChunks = useMemo(() => {
-    return [...normalizedChunks].sort((a, b) => a.normalizedTime - b.normalizedTime);
-  }, [normalizedChunks]);
-
   // Calculate main confidence score for the entire session
   const mainConfidenceScore = useMemo(() => {
     return calculateConfidenceScore(signals);
@@ -273,6 +261,22 @@ export default function TimelineReport({
     () => getRadarScores(signals, radarScenario),
     [signals, radarScenario]
   );
+
+  // Per-question answers with signals and transcript in each answer window
+  const answersWithSignals = useMemo(() => {
+    return answers.map((answer: SessionAnswer) => {
+      const signalsInWindow = signals.filter(
+        (s) => s.timestamp >= answer.startTime && s.timestamp <= answer.endTime
+      );
+      const chunksInWindow = transcriptChunks
+        .filter(
+          (c) => c.timestamp >= answer.startTime && c.timestamp <= answer.endTime
+        )
+        .sort((a, b) => a.chunkOrder - b.chunkOrder);
+      const transcriptInWindow = chunksInWindow.map((c) => c.text).join(' ').trim() || null;
+      return { answer, signalsInWindow, transcriptInWindow };
+    });
+  }, [answers, signals, transcriptChunks]);
 
   // Group signals by time position (within 2% tolerance) to avoid overlap
   // Also deduplicate signals at the exact same timestamp
@@ -582,24 +586,92 @@ export default function TimelineReport({
           </div>
         )}
 
-        {/* Transcript Layer - Concatenated and aligned with timeline */}
-        {transcriptChunks.length > 0 && (
-          <div className="mt-8 mb-4">
-            <h3 className="text-sm font-semibold text-realtalk-blue mb-3">Transcript</h3>
-            <div className="glass-dark rounded-lg p-4 border border-realtalk-blue/30 bg-realtalk-blue/10">
-              <div className="text-sm text-realtalk-blue/90 leading-relaxed whitespace-pre-wrap">
-                {sortedChunks.map((chunk, index) => (
-                  <span key={index} className="inline">
-                    {chunk.text}
-                    {index < sortedChunks.length - 1 && ' '}
-                  </span>
-                ))}
+        {/* Answers & signals per question – carousel */}
+        {answersWithSignals.length > 0 && (
+          <div className="mt-8 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h3 className="text-lg font-semibold text-realtalk-blue">Answers & signals per question</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAnswerCardIndex((i) => Math.max(0, i - 1))}
+                  disabled={answerCardIndex === 0}
+                  className="p-2 rounded-lg border-2 border-realtalk-blue/40 bg-white/80 hover:bg-realtalk-blue/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Previous question"
+                >
+                  <svg className="w-5 h-5 text-realtalk-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-700 tabular-nums">
+                  Question {answerCardIndex + 1} of {answersWithSignals.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAnswerCardIndex((i) => Math.min(answersWithSignals.length - 1, i + 1))}
+                  disabled={answerCardIndex === answersWithSignals.length - 1}
+                  className="p-2 rounded-lg border-2 border-realtalk-blue/40 bg-white/80 hover:bg-realtalk-blue/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Next question"
+                >
+                  <svg className="w-5 h-5 text-realtalk-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
-              {sortedChunks.length > 0 && (
-                <div className="mt-3 text-xs text-gray-700">
-                  <span>Duration: {formatDuration(sortedChunks[0].normalizedTime)} - {formatDuration(sortedChunks[sortedChunks.length - 1].normalizedEndTime)}</span>
-                </div>
-              )}
+            </div>
+            <div className="min-h-[200px]">
+              {(() => {
+                const safeIndex = Math.min(answerCardIndex, answersWithSignals.length - 1);
+                const { answer, signalsInWindow, transcriptInWindow } = answersWithSignals[safeIndex];
+                const index = safeIndex;
+                return (
+                  <div
+                    key={`${answer.questionId}-${answer.startTime}`}
+                    className="rounded-lg p-4 border-2 border-realtalk-blue/30 bg-gradient-to-br from-realtalk-blue/10 via-purple-500/5 to-turquoise-500/10 shadow-sm"
+                  >
+                    <div className="mb-2">
+                      <span className="text-xs font-semibold text-realtalk-blue uppercase tracking-wide">Question {index + 1}</span>
+                      <p className="text-sm font-medium text-gray-800 mt-0.5">{answer.questionText}</p>
+                    </div>
+                    <div className="mb-2 text-sm">
+                      <span className="text-gray-600">What you said: </span>
+                      <span className="font-medium text-realtalk-blue">
+                        {transcriptInWindow || answer.spokenAnswer || '(no transcript)'}
+                      </span>
+                    </div>
+                    {answer.correct !== null && (
+                      <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
+                        <span className="text-gray-600">Selected:</span>
+                        <span className="font-medium text-realtalk-blue">{answer.spokenAnswer || '—'}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${answer.correct ? 'bg-emerald-500/20 text-emerald-700' : 'bg-red-500/20 text-red-700'}`}>
+                          {answer.correct ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <span className="text-xs text-gray-600">Signals in answer window ({signalsInWindow.length}):</span>
+                      {signalsInWindow.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {signalsInWindow.slice(0, 12).map((s, i) => (
+                            <span
+                              key={`${s.timestamp}-${s.type}-${i}`}
+                              className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium border border-gray-200/80 bg-white/60"
+                              style={{ borderLeftColor: SIGNAL_COLORS[s.type] || '#6164F0', borderLeftWidth: 3 }}
+                            >
+                              {getSignalLabel(s.type)} {s.intensity}%
+                            </span>
+                          ))}
+                          {signalsInWindow.length > 12 && (
+                            <span className="text-xs text-gray-500">+{signalsInWindow.length - 12} more</span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic mt-0.5">No signals in this window</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

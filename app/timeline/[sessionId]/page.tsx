@@ -278,6 +278,17 @@ export default function TimelineReportPage() {
               isLive={false}
               className="w-full"
               sessionId={sessionId}
+              answersCount={sessionData.answers?.length ?? 0}
+              averageCorrect={
+                sessionData.answers?.length
+                  ? (() => {
+                      const mc = sessionData.answers!.filter((a) => a.correct !== null);
+                      if (mc.length === 0) return null;
+                      const correctCount = mc.filter((a) => a.correct === true).length;
+                      return (correctCount / mc.length) * 100;
+                    })()
+                  : undefined
+              }
             />
           </div>
         </div>

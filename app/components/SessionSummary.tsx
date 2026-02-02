@@ -12,6 +12,10 @@ export interface SessionSummaryProps {
   onClose?: () => void;
   className?: string;
   sessionId?: string | null;
+  /** Optional: number of questions answered (for report view). */
+  answersCount?: number;
+  /** Optional: average correct for MC questions (0–100 or null). Shown when answersCount > 0. */
+  averageCorrect?: number | null;
 }
 
 /**
@@ -166,6 +170,8 @@ export default function SessionSummary({
   onClose,
   className = '',
   sessionId,
+  answersCount,
+  averageCorrect,
 }: SessionSummaryProps) {
   const [stats, setStats] = useState<SessionStatistics | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -268,6 +274,20 @@ export default function SessionSummary({
             {stats ? stats.totalSignals : '0'}
           </p>
         </div>
+        {answersCount !== undefined && answersCount > 0 && (
+          <>
+            <div className="rounded-lg p-3 border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/15 to-orange-500/10 shadow-sm">
+              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Questions</p>
+              <p className="text-base font-bold text-amber-600">{answersCount}</p>
+            </div>
+            <div className="rounded-lg p-3 border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 to-teal-500/10 shadow-sm">
+              <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">MC correct</p>
+              <p className="text-base font-bold text-emerald-600">
+                {averageCorrect !== undefined && averageCorrect !== null ? `${Math.round(averageCorrect)}%` : 'N/A'}
+              </p>
+            </div>
+          </>
+        )}
         <div className="rounded-lg p-3 border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/15 to-indigo-500/10 shadow-sm">
           <p className="text-xs text-gray-600 uppercase tracking-wider mb-1 font-semibold">Types</p>
           <p className="text-base font-bold text-blue-600">
