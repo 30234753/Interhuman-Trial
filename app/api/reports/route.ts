@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sessionId, rating, feedback } = body;
+    const { sessionId, rating, feedback, positives, negatives, adaptationRating } = body;
 
     // Validate required fields
     if (!sessionId || typeof sessionId !== 'string') {
@@ -36,13 +36,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update session with rating and feedback
-    const updateData: { rating?: number | null; feedback?: string | null } = {};
-    
+    // Update session with rating, feedback, overall experience, and adaptation rating
+    const updateData: {
+      rating?: number | null;
+      feedback?: string | null;
+      positives?: string | null;
+      negatives?: string | null;
+      adaptation_rating?: number | null;
+    } = {};
+
     // Only update rating/feedback if provided
     if (rating !== undefined) {
       updateData.rating = rating === null || rating === '' ? null : Number(rating);
-      // Validate rating is between 1-5 if provided
       if (updateData.rating !== null && (updateData.rating < 1 || updateData.rating > 5)) {
         return NextResponse.json(
           { success: false, error: 'Rating must be between 1 and 5' },
@@ -50,16 +55,33 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     if (feedback !== undefined) {
       updateData.feedback = feedback === null || feedback === '' ? null : String(feedback).trim();
     }
-    
+
+    if (positives !== undefined) {
+      updateData.positives = positives === null || positives === '' ? null : String(positives).trim();
+    }
+    if (negatives !== undefined) {
+      updateData.negatives = negatives === null || negatives === '' ? null : String(negatives).trim();
+    }
+
+    if (adaptationRating !== undefined) {
+      updateData.adaptation_rating = adaptationRating === null || adaptationRating === '' ? null : Number(adaptationRating);
+      if (updateData.adaptation_rating !== null && (updateData.adaptation_rating < 1 || updateData.adaptation_rating > 5)) {
+        return NextResponse.json(
+          { success: false, error: 'Adaptation rating must be between 1 and 5' },
+          { status: 400 }
+        );
+      }
+    }
+
     const { data: updatedSession, error: updateError } = await supabase
       .from('sessions')
       .update(updateData)
       .eq('id', sessionId)
-      .select('id, start_time, end_time, created_at, rating, feedback')
+      .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
       .single();
 
     if (updateError) {
@@ -85,6 +107,9 @@ export async function POST(request: NextRequest) {
         created_at: updatedSession.created_at,
         rating: updatedSession.rating ?? null,
         feedback: updatedSession.feedback ?? null,
+        positives: updatedSession.positives ?? null,
+        negatives: updatedSession.negatives ?? null,
+        adaptation_rating: updatedSession.adaptation_rating ?? null,
       },
     });
   } catch (error) {
@@ -111,7 +136,7 @@ export async function GET(request: NextRequest) {
       // Fetch single session by sessionId
       const { data: sessionData, error: fetchError } = await supabase
         .from('sessions')
-        .select('id, start_time, end_time, created_at, rating, feedback')
+        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
         .eq('id', sessionId)
         .single();
 
@@ -146,13 +171,16 @@ export async function GET(request: NextRequest) {
           created_at: sessionData.created_at,
           rating: sessionData.rating ?? null,
           feedback: sessionData.feedback ?? null,
+          positives: sessionData.positives ?? null,
+          negatives: sessionData.negatives ?? null,
+          adaptation_rating: sessionData.adaptation_rating ?? null,
         },
       });
     } else {
       // Fetch all sessions ordered by created_at descending
       const { data: sessionsData, error: fetchError } = await supabase
         .from('sessions')
-        .select('id, start_time, end_time, created_at, rating, feedback')
+        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -169,6 +197,9 @@ export async function GET(request: NextRequest) {
         created_at: s.created_at,
         rating: s.rating ?? null,
         feedback: s.feedback ?? null,
+        positives: s.positives ?? null,
+        negatives: s.negatives ?? null,
+        adaptation_rating: s.adaptation_rating ?? null,
       })) || [];
 
       return NextResponse.json({

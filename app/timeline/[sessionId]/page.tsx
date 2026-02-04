@@ -14,11 +14,23 @@ export default function TimelineReportPage() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [existingReport, setExistingReport] = useState<{ id: string; session_id: string; created_at: string; rating?: number | null; feedback?: string | null } | null>(null);
+  const [existingReport, setExistingReport] = useState<{
+    id: string;
+    session_id: string;
+    created_at: string;
+    rating?: number | null;
+    feedback?: string | null;
+    positives?: string | null;
+    negatives?: string | null;
+    adaptation_rating?: number | null;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [positives, setPositives] = useState<string>('');
+  const [negatives, setNegatives] = useState<string>('');
   const [rating, setRating] = useState<number | null>(null);
+  const [adaptationRating, setAdaptationRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string>('');
   const [isLocked, setIsLocked] = useState(false);
 
@@ -62,18 +74,28 @@ export default function TimelineReportPage() {
 
         if (reportResponse.ok && reportData.success && reportData.report) {
           setExistingReport(reportData.report);
+          setPositives(reportData.report.positives ?? '');
+          setNegatives(reportData.report.negatives ?? '');
           setRating(reportData.report.rating ?? null);
+          setAdaptationRating(reportData.report.adaptation_rating ?? null);
           setFeedback(reportData.report.feedback ?? '');
-          // Lock fields if rating or feedback already exists (has been submitted before)
-          setIsLocked(reportData.report.rating !== null || (reportData.report.feedback !== null && reportData.report.feedback.trim() !== ''));
+          const hasAnyFeedback =
+            (reportData.report.positives != null && reportData.report.positives.trim() !== '') ||
+            (reportData.report.negatives != null && reportData.report.negatives.trim() !== '') ||
+            reportData.report.rating !== null ||
+            reportData.report.adaptation_rating !== null ||
+            (reportData.report.feedback != null && reportData.report.feedback.trim() !== '');
+          setIsLocked(hasAnyFeedback);
         } else {
-          // Even if no rating/feedback exists, we still have a session (report)
           setExistingReport({
             id: sessionId,
             session_id: sessionId,
             created_at: new Date().toISOString(),
             rating: null,
             feedback: null,
+            positives: null,
+            negatives: null,
+            adaptation_rating: null,
           });
           setIsLocked(false);
         }
@@ -111,7 +133,10 @@ export default function TimelineReportPage() {
         },
         body: JSON.stringify({
           sessionId: sessionId,
+          positives: positives,
+          negatives: negatives,
           rating: rating,
+          adaptationRating: adaptationRating,
           feedback: feedback,
         }),
       });
@@ -123,9 +148,12 @@ export default function TimelineReportPage() {
       }
 
       setExistingReport(data.session);
+      setPositives(data.session.positives ?? '');
+      setNegatives(data.session.negatives ?? '');
       setRating(data.session.rating ?? null);
+      setAdaptationRating(data.session.adaptation_rating ?? null);
       setFeedback(data.session.feedback ?? '');
-      setIsLocked(true); // Lock fields after successful submission
+      setIsLocked(true);
       setSaveSuccess(true);
 
       // Clear success message after 3 seconds
@@ -239,7 +267,7 @@ export default function TimelineReportPage() {
         {/* Save Status Messages */}
         {saveSuccess && (
           <div className="mb-6 animate-fade-in-up px-4 py-2 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 text-sm">
-            ✓ Rating and feedback saved successfully!
+            ✓ Feedback saved successfully!
           </div>
         )}
         {saveError && (
@@ -254,14 +282,16 @@ export default function TimelineReportPage() {
           <div className="lg:col-span-2">
             <TimelineReport 
               sessionData={sessionData}
+              positives={positives}
+              onPositivesChange={setPositives}
+              negatives={negatives}
+              onNegativesChange={setNegatives}
               rating={rating}
               feedback={feedback}
-              onRatingChange={(newRating) => {
-                setRating(newRating);
-              }}
-              onFeedbackChange={(newFeedback) => {
-                setFeedback(newFeedback);
-              }}
+              adaptationRating={adaptationRating}
+              onAdaptationRatingChange={setAdaptationRating}
+              onRatingChange={setRating}
+              onFeedbackChange={setFeedback}
               onSubmit={handleSubmitRatingAndFeedback}
               onEdit={handleEdit}
               isSubmitting={saving}
