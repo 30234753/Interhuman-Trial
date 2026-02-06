@@ -91,18 +91,18 @@ export default function Subtitles({
       const deepgram = createClient(apiKey);
 
       // Deepgram configuration matching the API URL parameters
-      // Reduced utteranceEndMs from 2000 to 500ms for faster results
-      // Lower endpointing (30ms) for more frequent interim updates
+      // smart_format and numerals improve recognition of numbers (including large numbers)
       const connectionConfig = {
         model: 'nova-3',
         language: 'en',
-        smartFormat: false,
-        interimResults: true,
+        smart_format: true, // Improves number/date/measurement recognition and formatting
+        numerals: true, // Converts spoken numbers to digits; helps with number-heavy answers
+        interim_results: true,
         punctuate: true,
-        endpointing: 30, // Reduced from 100 for more frequent interim results
-        utteranceEndMs: 500, // Reduced from 2000ms to 500ms for faster finalization
-        vadEvents: true,
-        mipOptOut: true,
+        endpointing: 30,
+        utterance_end_ms: 500,
+        vad_events: true,
+        mip_opt_out: true,
       };
 
       // Create live WebSocket connection directly to Deepgram
@@ -164,20 +164,19 @@ export default function Subtitles({
     }
   }, [handleTranscript]);
 
-  // Send audio chunk directly to Deepgram WebSocket (client-side)
+  // Send audio chunk directly to Deepgram WebSocket (client-side).
+  // Use isListeningRef (not isListening state) so we send as soon as Open fires,
+  // without waiting for a re-render — avoids stale closure when ondataavailable fires.
   const sendAudioChunk = useCallback(async (audioBlob: Blob, sessionId: string) => {
     try {
-      // Don't send audio if transcription session is not active or connection is not available
-      if (!isListening || !sessionId || !deepgramConnectionRef.current) {
+      if (!isListeningRef.current || !sessionId || !deepgramConnectionRef.current) {
         return;
       }
 
-      // Convert blob to ArrayBuffer for Deepgram WebSocket
+      const connection = deepgramConnectionRef.current;
       const arrayBuffer = await audioBlob.arrayBuffer();
+      connection.send(arrayBuffer);
 
-      // Send audio directly to Deepgram WebSocket connection
-      deepgramConnectionRef.current.send(arrayBuffer);
-      
       console.debug('[Subtitles] Audio chunk sent to Deepgram WebSocket:', {
         size: arrayBuffer.byteLength,
         sessionId,
@@ -186,7 +185,7 @@ export default function Subtitles({
       console.error('[Subtitles] Error sending audio chunk to Deepgram:', error);
       setError(error instanceof Error ? error.message : 'Failed to send audio to Deepgram');
     }
-  }, [isListening]);
+  }, []);
 
   // Update ref whenever sendAudioChunk changes
   useEffect(() => {

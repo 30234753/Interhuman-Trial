@@ -39,6 +39,7 @@ export default function VideoPlayer({
   const abortControllerRef = useRef<AbortController | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const previousSessionActiveRef = useRef<boolean | null>(null);
   
   // Signal aggregator for tracking signals over time window (15 seconds)
   const signalAggregator = useMemo(() => {
@@ -596,6 +597,23 @@ export default function VideoPlayer({
 
     videoCaptureProps.onStreamStop?.();
   }, [videoCaptureProps, onSignalsUpdate, signalAggregator]);
+
+  // When session stops (autoStart becomes false), always stop the camera so it is released
+  useEffect(() => {
+    const sessionActive = videoCaptureProps.autoStart;
+    const wasActive = previousSessionActiveRef.current;
+    if (sessionActive) {
+      previousSessionActiveRef.current = true;
+      return;
+    }
+    previousSessionActiveRef.current = false;
+    if (wasActive !== true && !isStreamActiveRef.current) return;
+    const video = getVideoElement();
+    const stopStream = (video as HTMLVideoElement & { stopStream?: () => void })?.stopStream;
+    if (typeof stopStream === 'function') {
+      stopStream();
+    }
+  }, [videoCaptureProps.autoStart, getVideoElement]);
 
   // Cleanup on unmount
   useEffect(() => {
