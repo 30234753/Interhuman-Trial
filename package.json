@@ -12,7 +12,8 @@
     "@deepgram/sdk": "^4.11.3",
     "@supabase/supabase-js": "^2.90.1",
     "cross-fetch": "^4.1.0",
-    "next": "14.2.5",
+    "metaphone": "^2.0.1",
+    "next": "14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vercel": "^50.4.10"
@@ -24,7 +25,7 @@
     "autoprefixer": "^10.4.19",
     "dotenv": "^17.2.3",
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.14",
+    "eslint-config-next": "^14.2.35",
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4"

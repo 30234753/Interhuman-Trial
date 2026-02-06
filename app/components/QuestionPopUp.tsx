@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { metaphone } from 'metaphone';
 import type { Question } from '@/app/lib/types';
 import { useTranscript } from '@/app/lib/transcript-context';
 
@@ -8,8 +9,14 @@ const DEFAULT_TIMEOUT_SECONDS = 20;
 
 /** Letters that can be parsed (only those in the question's options, e.g. A,B,C). */
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
-/** "C" is often misheard as "say" or "see" – treat these as C when C is allowed. */
-const C_SOUNDALIKES = ['say', 'see', 'sea'];
+
+/** Phonetic codes for how letter names sound (A=ay, B=bee, C=see, D=dee) – used to match ASR output. */
+const LETTER_METAPHONE_CODES: Record<string, string> = {
+  A: metaphone('ay'),
+  B: metaphone('bee'),
+  C: metaphone('see'),
+  D: metaphone('dee'),
+};
 
 /** 0–19 as words → digit string */
 const ONES: Record<string, number> = {
@@ -86,7 +93,7 @@ function extractNumberFromChunk(chunk: string): string | null {
   return null;
 }
 
-/** Normalize transcript chunk to detect MC answer. Matches: A/B/C (or 1/2/3), option text (e.g. "Water" or "42"/"forty two"/"at twelve"), and C sound-alikes ("say"/"see"). */
+/** Normalize transcript chunk to detect MC answer. Matches: A/B/C (or 1/2/3), option text (e.g. "Water" or "42"/"forty two"/"at twelve"), and phonetic letter names (e.g. "see"/"say"/"sea" → C, "bee" → B). */
 function parseMultipleChoiceAnswer(
   text: string,
   allowedLetters: readonly string[] = LETTERS,
@@ -132,8 +139,15 @@ function parseMultipleChoiceAnswer(
     return allowedSet.has(letter) ? letter : null;
   }
 
-  // 4. C is often misheard as "say" or "see"
-  if (allowedSet.has('C') && C_SOUNDALIKES.includes(word)) return 'C';
+  // 4. Phonetic match: word sounds like letter name (e.g. "say"/"see"/"sea" → C, "bee" → B)
+  const words = word.split(/\s+/).filter(Boolean);
+  const candidateWord = words.length === 0 ? '' : words[words.length - 1];
+  if (candidateWord) {
+    const code = metaphone(candidateWord);
+    for (const letter of ['A', 'B', 'C', 'D'] as const) {
+      if (allowedSet.has(letter) && code === LETTER_METAPHONE_CODES[letter]) return letter;
+    }
+  }
 
   // 5. Option text: number anywhere in chunk (e.g. "at twelve" → 12 matches option "12")
   if (options?.length) {
