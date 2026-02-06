@@ -3,6 +3,7 @@ import { createSupabaseClient } from '@/app/lib/supabase';
 import type { Question } from '@/app/lib/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/questions
@@ -13,7 +14,7 @@ export const runtime = 'nodejs';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const idsParam = searchParams.get('ids');
 
