@@ -277,7 +277,7 @@ export default function TimelineReportPage() {
         )}
 
         {/* Timeline Report and Session Summary - Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up items-start" style={{ animationDelay: '0.2s' }}>
           {/* Timeline Report - Left Column (2/3 width on large screens) */}
           <div className="lg:col-span-2">
             <TimelineReport 
@@ -298,9 +298,10 @@ export default function TimelineReportPage() {
               isLocked={isLocked}
             />
           </div>
+        
           
           {/* Session Summary - Right Column (1/3 width on large screens) */}
-          <div className="lg:col-span-1 flex">
+          <div className="lg:col-span-1">
             <SessionSummary
               signals={sessionData.signals}
               startTime={sessionData.startTime}
