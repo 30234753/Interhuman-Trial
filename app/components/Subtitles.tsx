@@ -86,33 +86,28 @@ export default function Subtitles({
       }
 
       console.log('[Subtitles] Creating client-side Deepgram WebSocket connection...');
-      
-      // Create Deepgram client
+
       const deepgram = createClient(apiKey);
 
-      // Deepgram configuration matching the API URL parameters
-      // smart_format and numerals improve recognition of numbers (including large numbers)
+      // Deepgram configuration matching the API URL parameters (working config from 9d14413)
       const connectionConfig = {
         model: 'nova-3',
         language: 'en',
-        smart_format: true, // Improves number/date/measurement recognition and formatting
-        numerals: true, // Converts spoken numbers to digits; helps with number-heavy answers
-        interim_results: true,
+        smartFormat: false,
+        interimResults: true,
         punctuate: true,
         endpointing: 30,
-        utterance_end_ms: 500,
-        vad_events: true,
-        mip_opt_out: true,
+        utteranceEndMs: 500,
+        vadEvents: true,
+        mipOptOut: true,
       };
 
-      // Create live WebSocket connection directly to Deepgram
       const connection = deepgram.listen.live(connectionConfig);
       deepgramConnectionRef.current = connection;
 
-      // Set up event handlers
       connection.on(LiveTranscriptionEvents.Open, () => {
         console.log('[Subtitles] Deepgram WebSocket connection opened');
-        isListeningRef.current = true; // Update ref immediately so audio chunks can be sent
+        isListeningRef.current = true;
         setIsListening(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
@@ -122,7 +117,6 @@ export default function Subtitles({
         try {
           const transcript = data.channel?.alternatives?.[0]?.transcript || '';
           const isFinal = data.is_final || false;
-          
           if (transcript) {
             handleTranscript(transcript, isFinal);
           }
@@ -134,10 +128,8 @@ export default function Subtitles({
       connection.on(LiveTranscriptionEvents.Error, (error: any) => {
         console.error('[Subtitles] Deepgram WebSocket error:', error);
         setError(error?.message || 'Deepgram connection error');
-        isListeningRef.current = false; // Update ref when connection errors
+        isListeningRef.current = false;
         setIsListening(false);
-        
-        // Attempt reconnection
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -152,7 +144,7 @@ export default function Subtitles({
 
       connection.on(LiveTranscriptionEvents.Close, () => {
         console.log('[Subtitles] Deepgram WebSocket connection closed');
-        isListeningRef.current = false; // Update ref when connection closes
+        isListeningRef.current = false;
         setIsListening(false);
         deepgramConnectionRef.current = null;
       });
