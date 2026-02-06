@@ -334,7 +334,7 @@ export default function VideoCapture({
       {!isStreaming && !isLoading && !error && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-sm rounded-lg animate-fade-in">
           <div className="flex flex-col items-center justify-center gap-8 text-white text-center px-4">
-            <div className="w-20 h-20 rounded-full bg-turquoise-500/20 flex items-center justify-center border-2 border-turquoise-500/30">
+            <div className="w-20 h-20 rounded-full from-realtalk-dark to-realtalk-blue flex items-center justify-center border-2 border-turquoise-500/30">
               <svg className="w-10 h-10 text-turquoise-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
@@ -344,7 +344,7 @@ export default function VideoCapture({
               onClick={() => {
                 startStream();
               }}
-              className="px-8 py-3.5 bg-gradient-to-r from-turquoise-600 to-turquoise-700 hover:from-turquoise-700 hover:to-turquoise-800 active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+              className="px-8 py-3.5 bg-gradient-to-r from-realtalk-dark to-realtalk-blue hover:from-realtalk-dark hover:to-realtalk-blue active:scale-95 rounded-lg text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

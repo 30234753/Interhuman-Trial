@@ -1,0 +1,1 @@
+{"location":"VideoPlayer.tsx:424","message":"handleStreamReady called","data":{"enabled":true,"analysisInterval":2000,"streamActive":true,"audioTracks":1,"videoTracks":1},"timestamp":1770376219368,"sessionId":"debug-session","runId":"run1","hypothesisId":"K"}

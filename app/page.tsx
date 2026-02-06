@@ -21,8 +21,8 @@ export default function MainMenu() {
       <div className="z-10 max-w-4xl w-full items-center justify-center animate-fade-in">
         {/* Main Title */}
         <div className="text-center mb-12 animate-fade-in-up">
-          <h1 
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent px-4"
+        <h1 
+            className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-normal pb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text px-4"
             style={{
               backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
               WebkitBackgroundClip: 'text',
@@ -31,7 +31,7 @@ export default function MainMenu() {
             }}>
             Roleplay Body Language Analyser
           </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 mt-4 font-medium">
+          <p className="text-lg sm:text-lg md:text-2xl text-realtalk-blue mt-2 font-small z-10">
             Real-time behavioural analysis powered by AI
           </p>
         </div>

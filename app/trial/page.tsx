@@ -196,7 +196,7 @@ export default function TrialPage() {
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in-up pt-4">
           <h1 
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-normal pb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text text-transparent px-4"
+            className="text-2xl sm:text-2xl md:text-5xl lg:text-5xl font-bold mb-4 leading-normal pb-2 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-realtalk-light bg-clip-text px-4"
             style={{
               backgroundImage: 'linear-gradient(to right, #5442b3, #6164F0, #8272e5)',
               WebkitBackgroundClip: 'text',
@@ -206,7 +206,7 @@ export default function TrialPage() {
             Roleplay Body Language Analyser
           </h1>
           <p 
-            className="text-realtalk-blue text-sm md:text-base mt-2 font-medium">
+            className="text-realtalk-blue text-lg sm:text-lg md:text-xl mt-2 font-medium">
             Real-time behavioural analysis powered by AI
           </p>
         </div>
