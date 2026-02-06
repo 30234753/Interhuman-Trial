@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sessionId, rating, feedback, positives, negatives, adaptationRating } = body;
+    const { sessionId, rating, feedback, positives, negatives, adaptationRating, useCases, useCasesOther, concerns } = body;
 
     // Validate required fields
     if (!sessionId || typeof sessionId !== 'string') {
@@ -36,13 +36,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update session with rating, feedback, overall experience, and adaptation rating
+    // Update session with rating, feedback, overall experience, adaptation rating, use cases, and concerns
     const updateData: {
       rating?: number | null;
       feedback?: string | null;
       positives?: string | null;
       negatives?: string | null;
       adaptation_rating?: number | null;
+      use_cases?: string[] | null;
+      use_cases_other?: string | null;
+      concerns?: string | null;
     } = {};
 
     // Only update rating/feedback if provided
@@ -77,11 +80,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (useCases !== undefined) {
+      updateData.use_cases = Array.isArray(useCases) ? useCases : null;
+    }
+    if (useCasesOther !== undefined) {
+      updateData.use_cases_other = useCasesOther === null || useCasesOther === '' ? null : String(useCasesOther).trim();
+    }
+    if (concerns !== undefined) {
+      updateData.concerns = concerns === null || concerns === '' ? null : String(concerns).trim();
+    }
+
     const { data: updatedSession, error: updateError } = await supabase
       .from('sessions')
       .update(updateData)
       .eq('id', sessionId)
-      .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
+      .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating, use_cases, use_cases_other, concerns')
       .single();
 
     if (updateError) {
@@ -110,6 +123,9 @@ export async function POST(request: NextRequest) {
         positives: updatedSession.positives ?? null,
         negatives: updatedSession.negatives ?? null,
         adaptation_rating: updatedSession.adaptation_rating ?? null,
+        use_cases: updatedSession.use_cases ?? null,
+        use_cases_other: updatedSession.use_cases_other ?? null,
+        concerns: updatedSession.concerns ?? null,
       },
     });
   } catch (error) {
@@ -136,7 +152,7 @@ export async function GET(request: NextRequest) {
       // Fetch single session by sessionId
       const { data: sessionData, error: fetchError } = await supabase
         .from('sessions')
-        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
+        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating, use_cases, use_cases_other, concerns')
         .eq('id', sessionId)
         .single();
 
@@ -174,13 +190,16 @@ export async function GET(request: NextRequest) {
           positives: sessionData.positives ?? null,
           negatives: sessionData.negatives ?? null,
           adaptation_rating: sessionData.adaptation_rating ?? null,
+          use_cases: sessionData.use_cases ?? null,
+          use_cases_other: sessionData.use_cases_other ?? null,
+          concerns: sessionData.concerns ?? null,
         },
       });
     } else {
       // Fetch all sessions ordered by created_at descending
       const { data: sessionsData, error: fetchError } = await supabase
         .from('sessions')
-        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating')
+        .select('id, start_time, end_time, created_at, rating, feedback, positives, negatives, adaptation_rating, use_cases, use_cases_other, concerns')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -200,6 +219,9 @@ export async function GET(request: NextRequest) {
         positives: s.positives ?? null,
         negatives: s.negatives ?? null,
         adaptation_rating: s.adaptation_rating ?? null,
+        use_cases: s.use_cases ?? null,
+        use_cases_other: s.use_cases_other ?? null,
+        concerns: s.concerns ?? null,
       })) || [];
 
       return NextResponse.json({

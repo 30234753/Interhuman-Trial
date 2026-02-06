@@ -14,6 +14,8 @@ export interface VideoPlayerProps extends Omit<VideoCaptureProps, 'onStreamReady
   enabled?: boolean; // Whether to enable real-time analysis
   /** When true, run behavioral analysis; when false, do not call captureAndAnalyze / onSignalsUpdate (answer window only) */
   answerWindowActive?: boolean;
+  /** When true, pause analysis and do not report signals (e.g. during category feedback modal). Resumes when false. */
+  signalsPaused?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ export default function VideoPlayer({
   analysisInterval = 2000, // Default: analyze every 2 seconds
   enabled = true,
   answerWindowActive = false,
+  signalsPaused = false,
   className = '',
   ...videoCaptureProps
 }: VideoPlayerProps) {
@@ -40,6 +43,8 @@ export default function VideoPlayer({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const previousSessionActiveRef = useRef<boolean | null>(null);
+  const signalsPausedRef = useRef(signalsPaused);
+  signalsPausedRef.current = signalsPaused;
   
   // Signal aggregator for tracking signals over time window (15 seconds)
   const signalAggregator = useMemo(() => {
@@ -126,8 +131,8 @@ export default function VideoPlayer({
     fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:118',message:'captureAndAnalyze called',data:{isStreamActive:isStreamActiveRef.current,enabled,isAnalyzing},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
     // #endregion
     
-    // Only run analysis during answer window
-    if (!answerWindowActive) {
+    // Only run analysis during answer window, and not when signals are paused (e.g. feedback modal)
+    if (!answerWindowActive || signalsPausedRef.current) {
       return;
     }
 
@@ -471,10 +476,12 @@ export default function VideoPlayer({
         });
 
         setCurrentSignals(enhancedSignals);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:465',message:'Calling onSignalsUpdate',data:{enhancedSignalsCount:enhancedSignals.length,enhancedSignals:enhancedSignals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),baseSignalsCount:baseSignals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        onSignalsUpdate?.(enhancedSignals);
+        if (!signalsPausedRef.current) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/64d3d2e4-78b5-4c8e-a18c-7ebac2888253',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VideoPlayer.tsx:465',message:'Calling onSignalsUpdate',data:{enhancedSignalsCount:enhancedSignals.length,enhancedSignals:enhancedSignals.map(s=>({type:s.type,intensity:s.intensity,timestamp:s.timestamp})),baseSignalsCount:baseSignals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          onSignalsUpdate?.(enhancedSignals);
+        }
       }
     } catch (error) {
       // Ignore abort errors (expected when stream stops)
@@ -508,7 +515,7 @@ export default function VideoPlayer({
    * Used when stream becomes ready and when answerWindowActive turns true mid-session.
    */
   const startAnalysisLoop = useCallback(() => {
-    if (!enabled || analysisInterval <= 0 || !answerWindowActive) {
+    if (!enabled || analysisInterval <= 0 || !answerWindowActive || signalsPausedRef.current) {
       return;
     }
     if (analysisIntervalRef.current) {
@@ -525,8 +532,8 @@ export default function VideoPlayer({
       } catch (error) {
         // Errors are already logged in captureAndAnalyze
       }
-      // Schedule next only if stream still active, enabled, and still in answer window
-      if (isStreamActiveRef.current && enabled && answerWindowActive) {
+      // Schedule next only if stream still active, enabled, in answer window, and not paused
+      if (isStreamActiveRef.current && enabled && answerWindowActive && !signalsPausedRef.current) {
         analysisIntervalRef.current = setTimeout(runAnalysis, analysisInterval) as any;
       }
     };
@@ -544,7 +551,7 @@ export default function VideoPlayer({
     isStreamActiveRef.current = true;
     setCurrentStream(stream);
 
-    if (enabled && analysisInterval > 0 && answerWindowActive) {
+    if (enabled && analysisInterval > 0 && answerWindowActive && !signalsPausedRef.current) {
       startAnalysisLoop();
     }
 
@@ -635,9 +642,9 @@ export default function VideoPlayer({
     }
   }, [enabled]);
 
-  // Start/stop analysis loop when answer window opens/closes
+  // Start/stop analysis loop when answer window or signalsPaused changes
   useEffect(() => {
-    if (!answerWindowActive) {
+    if (!answerWindowActive || signalsPaused) {
       if (analysisIntervalRef.current) {
         clearTimeout(analysisIntervalRef.current as any);
         analysisIntervalRef.current = null;
@@ -647,18 +654,19 @@ export default function VideoPlayer({
     if (isStreamActiveRef.current && enabled && analysisInterval > 0) {
       startAnalysisLoop();
     }
-  }, [answerWindowActive, enabled, analysisInterval, startAnalysisLoop]);
+  }, [answerWindowActive, signalsPaused, enabled, analysisInterval, startAnalysisLoop]);
 
   return (
     <div ref={containerRef} className={`relative w-full h-full ${className}`}>
       {/* Hidden canvas for frame capture */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Video capture component */}
+      {/* Video capture component - pause camera/mic when signals are paused (feedback popup or buffers) */}
       <VideoCapture
         {...videoCaptureProps}
         onStreamReady={handleStreamReady}
         onStreamStop={handleStreamStop}
+        paused={signalsPaused}
         className="absolute inset-0 z-10"
       />
 
@@ -670,10 +678,10 @@ export default function VideoPlayer({
         compact={false}
       />
 
-      {/* Subtitles overlay - reserved bottom zone so signals (positioned above) don't overlap */}
+      {/* Subtitles overlay - disabled when signals paused so transcript is not captured during feedback/buffers */}
       <Subtitles
-        enabled={enabled && isStreamActiveRef.current}
-        stream={currentStream}
+        enabled={enabled && isStreamActiveRef.current && !signalsPaused}
+        stream={signalsPaused ? null : currentStream}
         className="min-h-[5rem]"
       />
 

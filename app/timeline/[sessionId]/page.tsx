@@ -23,6 +23,9 @@ export default function TimelineReportPage() {
     positives?: string | null;
     negatives?: string | null;
     adaptation_rating?: number | null;
+    use_cases?: string[] | null;
+    use_cases_other?: string | null;
+    concerns?: string | null;
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -32,6 +35,9 @@ export default function TimelineReportPage() {
   const [rating, setRating] = useState<number | null>(null);
   const [adaptationRating, setAdaptationRating] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<string>('');
+  const [useCases, setUseCases] = useState<string[]>([]);
+  const [useCasesOther, setUseCasesOther] = useState<string>('');
+  const [concerns, setConcerns] = useState<string>('');
   const [isLocked, setIsLocked] = useState(false);
 
   // Fetch session data and existing report
@@ -79,12 +85,18 @@ export default function TimelineReportPage() {
           setRating(reportData.report.rating ?? null);
           setAdaptationRating(reportData.report.adaptation_rating ?? null);
           setFeedback(reportData.report.feedback ?? '');
+          setUseCases(Array.isArray(reportData.report.use_cases) ? reportData.report.use_cases : []);
+          setUseCasesOther(reportData.report.use_cases_other ?? '');
+          setConcerns(reportData.report.concerns ?? '');
           const hasAnyFeedback =
             (reportData.report.positives != null && reportData.report.positives.trim() !== '') ||
             (reportData.report.negatives != null && reportData.report.negatives.trim() !== '') ||
             reportData.report.rating !== null ||
             reportData.report.adaptation_rating !== null ||
-            (reportData.report.feedback != null && reportData.report.feedback.trim() !== '');
+            (reportData.report.feedback != null && reportData.report.feedback.trim() !== '') ||
+            (Array.isArray(reportData.report.use_cases) && reportData.report.use_cases.length > 0) ||
+            (reportData.report.use_cases_other != null && reportData.report.use_cases_other.trim() !== '') ||
+            (reportData.report.concerns != null && reportData.report.concerns.trim() !== '');
           setIsLocked(hasAnyFeedback);
         } else {
           setExistingReport({
@@ -96,6 +108,9 @@ export default function TimelineReportPage() {
             positives: null,
             negatives: null,
             adaptation_rating: null,
+            use_cases: null,
+            use_cases_other: null,
+            concerns: null,
           });
           setIsLocked(false);
         }
@@ -138,6 +153,9 @@ export default function TimelineReportPage() {
           rating: rating,
           adaptationRating: adaptationRating,
           feedback: feedback,
+          useCases: useCases,
+          useCasesOther: useCasesOther,
+          concerns: concerns,
         }),
       });
 
@@ -153,6 +171,9 @@ export default function TimelineReportPage() {
       setRating(data.session.rating ?? null);
       setAdaptationRating(data.session.adaptation_rating ?? null);
       setFeedback(data.session.feedback ?? '');
+      setUseCases(Array.isArray(data.session.use_cases) ? data.session.use_cases : []);
+      setUseCasesOther(data.session.use_cases_other ?? '');
+      setConcerns(data.session.concerns ?? '');
       setIsLocked(true);
       setSaveSuccess(true);
 
@@ -292,6 +313,12 @@ export default function TimelineReportPage() {
               onAdaptationRatingChange={setAdaptationRating}
               onRatingChange={setRating}
               onFeedbackChange={setFeedback}
+              useCases={useCases}
+              onUseCasesChange={setUseCases}
+              useCasesOther={useCasesOther}
+              onUseCasesOtherChange={setUseCasesOther}
+              concerns={concerns}
+              onConcernsChange={setConcerns}
               onSubmit={handleSubmitRatingAndFeedback}
               onEdit={handleEdit}
               isSubmitting={saving}

@@ -303,15 +303,18 @@ export default function QuestionPopUp({
           {isMultipleChoice && options.length > 0 && (
             <span className="flex flex-1 flex-shrink-0 items-center gap-1.5 text-gray-700 text-xs sm:text-sm flex-wrap min-w-0">
               {options.map((opt, i) => (
-                <span
+                <button
                   key={opt.letter}
-                  className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 transition-colors ${
+                  type="button"
+                  onClick={() => !answered && setHighlightedLetter(opt.letter)}
+                  disabled={answered}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 transition-colors text-left cursor-pointer border border-transparent hover:bg-realtalk-blue/15 focus:outline-none focus:ring-2 focus:ring-realtalk-blue/50 disabled:opacity-60 disabled:cursor-default disabled:hover:bg-transparent ${
                     highlightedLetter === opt.letter ? 'bg-realtalk-blue/25 ring-1 ring-realtalk-blue/50' : ''
                   }`}
                 >
                   {i > 0 && <span className="text-gray-400">·</span>}
                   <span><span className="font-medium text-realtalk-blue">{opt.letter}.</span> {opt.text}</span>
-                </span>
+                </button>
               ))}
             </span>
           )}

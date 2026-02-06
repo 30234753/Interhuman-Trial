@@ -8,6 +8,8 @@ export interface VideoCaptureProps {
   onStreamStop?: () => void;
   constraints?: MediaStreamConstraints;
   autoStart?: boolean;
+  /** When true, stop the stream temporarily (e.g. during feedback popup). When false again, stream can auto-start if autoStart is true. */
+  paused?: boolean;
   className?: string;
 }
 
@@ -28,6 +30,7 @@ export default function VideoCapture({
     audio: true,
   },
   autoStart = false,
+  paused = false,
   className = '',
 }: VideoCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -238,13 +241,20 @@ export default function VideoCapture({
     }
   }, [constraints, onStreamReady, onStreamError, stopStream]);
 
-  // Auto-start stream if autoStart is true (only once)
+  // Auto-start stream if autoStart is true and not paused (do not restart while paused or we get camera flash loop)
   useEffect(() => {
-    if (autoStart && !isStreaming && !isLoading && !hasAttemptedAutoStart.current) {
+    if (autoStart && !paused && !isStreaming && !isLoading && !hasAttemptedAutoStart.current) {
       hasAttemptedAutoStart.current = true;
       startStream();
     }
-  }, [autoStart, isStreaming, isLoading, startStream]);
+  }, [autoStart, paused, isStreaming, isLoading, startStream]);
+
+  // When paused is true, stop the stream so camera/mic are released during feedback popup or buffers
+  useEffect(() => {
+    if (paused && isStreaming) {
+      stopStream();
+    }
+  }, [paused, isStreaming, stopStream]);
 
   // Cleanup on unmount - use refs to avoid dependency issues
   useEffect(() => {

@@ -22,11 +22,33 @@ export interface TimelineReportProps {
   onAdaptationRatingChange?: (rating: number | null) => void;
   onRatingChange?: (rating: number | null) => void;
   onFeedbackChange?: (feedback: string) => void;
+  /** Use cases: multiple choice (array of keys) */
+  useCases?: string[] | null;
+  onUseCasesChange?: (value: string[]) => void;
+  /** Free text when "other" use case is selected */
+  useCasesOther?: string | null;
+  onUseCasesOtherChange?: (value: string) => void;
+  /** Concerns about the application */
+  concerns?: string | null;
+  onConcernsChange?: (value: string) => void;
   onSubmit?: () => void;
   onEdit?: () => void;
   isSubmitting?: boolean;
   isLocked?: boolean;
 }
+
+/** Predefined use case options for "What use cases do you see this application being used in?" */
+export const USE_CASE_OPTIONS = [
+  { key: 'ai_avatars', label: 'AI avatars / digital humans' },
+  { key: 'police_interrogations', label: 'Police interrogations' },
+  { key: 'teaching_presentation', label: 'Teaching students how to present' },
+  { key: 'job_interviews', label: 'Job interview practice' },
+  { key: 'therapy_coaching', label: 'Therapy or coaching sessions' },
+  { key: 'legal_court', label: 'Legal / court proceedings' },
+  { key: 'customer_service', label: 'Customer service training' },
+  { key: 'media_broadcast', label: 'Media and broadcast' },
+  { key: 'other', label: 'Other' },
+] as const;
 
 /**
  * Color mapping for different behavioral signal types (distinct color palette)
@@ -101,6 +123,12 @@ export default function TimelineReport({
   onAdaptationRatingChange,
   onRatingChange,
   onFeedbackChange,
+  useCases: externalUseCases,
+  onUseCasesChange: onUseCasesChangeProp,
+  useCasesOther: externalUseCasesOther,
+  onUseCasesOtherChange: onUseCasesOtherChangeProp,
+  concerns: externalConcerns,
+  onConcernsChange: onConcernsChangeProp,
   onSubmit,
   onEdit,
   isSubmitting = false,
@@ -129,19 +157,27 @@ export default function TimelineReport({
   const [radarScenarioId, setRadarScenarioId] = useState<string>(RADAR_SCENARIOS[0]?.id ?? 'general');
   // Carousel: current answer card index (Answers & signals per question)
   const [answerCardIndex, setAnswerCardIndex] = useState(0);
-  
+  // Feedback popup: collapsed by default, user expands to answer
+  const [feedbackPopupExpanded, setFeedbackPopupExpanded] = useState(false);
+
   // Internal state for positives, negatives, rating, feedback, adaptation rating (used if not controlled externally)
   const [internalPositives, setInternalPositives] = useState<string>(externalPositives ?? '');
   const [internalNegatives, setInternalNegatives] = useState<string>(externalNegatives ?? '');
   const [internalRating, setInternalRating] = useState<number | null>(externalRating ?? null);
   const [internalFeedback, setInternalFeedback] = useState<string>(externalFeedback ?? '');
   const [internalAdaptationRating, setInternalAdaptationRating] = useState<number | null>(externalAdaptationRating ?? null);
+  const [internalUseCases, setInternalUseCases] = useState<string[]>(Array.isArray(externalUseCases) ? externalUseCases : []);
+  const [internalUseCasesOther, setInternalUseCasesOther] = useState<string>(externalUseCasesOther ?? '');
+  const [internalConcerns, setInternalConcerns] = useState<string>(externalConcerns ?? '');
 
   const positives = externalPositives !== undefined ? (externalPositives ?? '') : internalPositives;
   const negatives = externalNegatives !== undefined ? (externalNegatives ?? '') : internalNegatives;
   const rating = externalRating !== undefined ? externalRating : internalRating;
   const feedback = externalFeedback !== undefined ? (externalFeedback ?? '') : internalFeedback;
   const adaptationRating = externalAdaptationRating !== undefined ? externalAdaptationRating : internalAdaptationRating;
+  const useCases = externalUseCases !== undefined ? (externalUseCases ?? []) : internalUseCases;
+  const useCasesOther = externalUseCasesOther !== undefined ? (externalUseCasesOther ?? '') : internalUseCasesOther;
+  const concerns = externalConcerns !== undefined ? (externalConcerns ?? '') : internalConcerns;
 
   const handlePositivesChange = (value: string) => {
     if (onPositivesChange) {
@@ -182,6 +218,33 @@ export default function TimelineReport({
       onFeedbackChange(value);
     } else {
       setInternalFeedback(value);
+    }
+  };
+
+  const handleUseCasesChange = (key: string, checked: boolean) => {
+    const next = checked
+      ? [...useCases, key]
+      : useCases.filter((k) => k !== key);
+    if (onUseCasesChangeProp) {
+      onUseCasesChangeProp(next);
+    } else {
+      setInternalUseCases(next);
+    }
+  };
+
+  const handleUseCasesOtherChange = (value: string) => {
+    if (onUseCasesOtherChangeProp) {
+      onUseCasesOtherChangeProp(value);
+    } else {
+      setInternalUseCasesOther(value);
+    }
+  };
+
+  const handleConcernsChange = (value: string) => {
+    if (onConcernsChangeProp) {
+      onConcernsChangeProp(value);
+    } else {
+      setInternalConcerns(value);
     }
   };
 
@@ -358,6 +421,7 @@ export default function TimelineReport({
   }, [displaySignals, sessionDuration]);
 
   return (
+    <>
     <div className={`glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-white/10 shadow-2xl ${className}`}>
       {/* Header */}
       <div className="mb-6">
@@ -766,170 +830,185 @@ export default function TimelineReport({
         </div>
       </div>
 
-      {/* Rating and Feedback Section */}
-      <div className="mt-8 pt-6 border-t border-gray-200/50">
-        <h3 className="text-lg font-semibold text-realtalk-blue mb-4">Feedback</h3>
-
-        {/* Positives */}
-        <div className="mb-6">
-          <label htmlFor="positives-input" className="block text-sm font-medium text-gray-700 mb-3">
-            Positives
-          </label>
-          <textarea
-            id="positives-input"
-            value={positives || ''}
-            onChange={(e) => !isLocked && handlePositivesChange(e.target.value)}
-            disabled={isLocked}
-            placeholder="What were the main positives of this experience?"
-            rows={3}
-            className={`w-full px-4 py-3 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 rounded-lg text-realtalk-blue font-medium placeholder-gray-400 transition-all shadow-sm resize-none ${
-              isLocked
-                ? 'cursor-not-allowed opacity-60'
-                : 'hover:border-realtalk-blue/40 focus:border-realtalk-blue focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30'
-            }`}
-          />
-        </div>
-
-        {/* Negatives */}
-        <div className="mb-6">
-          <label htmlFor="negatives-input" className="block text-sm font-medium text-gray-700 mb-3">
-            Negatives
-          </label>
-          <textarea
-            id="negatives-input"
-            value={negatives || ''}
-            onChange={(e) => !isLocked && handleNegativesChange(e.target.value)}
-            disabled={isLocked}
-            placeholder="What were the main negatives of this experience?"
-            rows={3}
-            className={`w-full px-4 py-3 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 rounded-lg text-realtalk-blue font-medium placeholder-gray-400 transition-all shadow-sm resize-none ${
-              isLocked
-                ? 'cursor-not-allowed opacity-60'
-                : 'hover:border-realtalk-blue/40 focus:border-realtalk-blue focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30'
-            }`}
-          />
-        </div>
-
-        {/* Star Rating - Accuracy */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            How accurate was the system? (1-5)
-          </label>
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => !isLocked && handleRatingClick(value)}
-                disabled={isLocked}
-                className={`transition-all transform ${
-                  isLocked ? 'cursor-not-allowed opacity-60' : 'hover:scale-110 cursor-pointer'
-                } ${
-                  rating && rating >= value
-                    ? 'text-yellow-400'
-                    : 'text-gray-300 hover:text-yellow-300'
-                }`}
-                aria-label={`Rate ${value} out of 5`}
-              >
-                <svg
-                  className="w-10 h-10"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              </button>
-            ))}
-            {rating && (
-              <span className="ml-3 text-sm font-semibold text-realtalk-blue">
-                {rating} / 5
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Adaptation effectiveness rating */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-3">
-            How effective was the system at adapting questions to your signals? (1–5)
-          </label>
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => !isLocked && handleAdaptationRatingClick(value)}
-                disabled={isLocked}
-                className={`transition-all transform ${
-                  isLocked ? 'cursor-not-allowed opacity-60' : 'hover:scale-110 cursor-pointer'
-                } ${
-                  adaptationRating !== null && adaptationRating >= value
-                    ? 'text-amber-500'
-                    : 'text-gray-300 hover:text-amber-400'
-                }`}
-                aria-label={`Rate adaptation ${value} out of 5`}
-              >
-                <svg
-                  className="w-10 h-10"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              </button>
-            ))}
-            {adaptationRating !== null && (
-              <span className="ml-3 text-sm font-semibold text-realtalk-blue">
-                {adaptationRating} / 5
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Feedback Text Box */}
-        <div className="mb-6">
-          <label htmlFor="feedback-input" className="block text-sm font-medium text-gray-700 mb-3">
-            Feedback (Optional)
-          </label>
-          <textarea
-            id="feedback-input"
-            value={feedback || ''}
-            onChange={(e) => !isLocked && handleFeedbackChange(e.target.value)}
-            disabled={isLocked}
-            placeholder="Share your thoughts about the system's accuracy..."
-            rows={4}
-            className={`w-full px-4 py-3 bg-gradient-to-r from-white to-gray-50 border-2 border-gray-300 rounded-lg text-realtalk-blue font-medium placeholder-gray-400 transition-all shadow-sm resize-none ${
-              isLocked 
-                ? 'cursor-not-allowed opacity-60' 
-                : 'hover:border-realtalk-blue/40 focus:border-realtalk-blue focus:outline-none focus:ring-2 focus:ring-realtalk-blue/30'
-            }`}
-          />
-        </div>
-
-        {/* Submit/Edit Button Bar */}
-        <div className="flex items-center justify-end pt-4 border-t border-gray-200/50">
-          {isLocked ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="px-6 py-3 bg-gradient-to-r from-realtalk-blue/30 to-purple-500/30 hover:from-realtalk-blue/40 hover:to-purple-500/40 border-2 border-realtalk-blue/40 rounded-lg text-realtalk-blue font-bold hover:text-purple-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Edit feedback
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-3 bg-gradient-to-r from-realtalk-dark via-realtalk-blue to-purple-600 hover:from-realtalk-blue hover:via-purple-500 hover:to-pink-500 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit feedback'}
-            </button>
-          )}
-        </div>
-      </div>
     </div>
+
+      {/* Feedback popup - bottom right, expand to answer */}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-0">
+        {!feedbackPopupExpanded ? (
+          <button
+            type="button"
+            onClick={() => setFeedbackPopupExpanded(true)}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl bg-gradient-to-r from-realtalk-blue to-purple-600 text-white font-semibold hover:from-realtalk-blue/90 hover:to-purple-600/90 transition-all border border-purple-500/50"
+            aria-label="Open feedback"
+          >
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Feedback
+          </button>
+        ) : (
+          <div className="w-full max-w-md rounded-xl shadow-2xl border-2 border-realtalk-blue/30 bg-gradient-to-br from-white via-purple-50 to-purple-100 overflow-hidden flex flex-col max-h-[calc(100vh-5rem)]">
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-realtalk-blue to-purple-600 border-b border-realtalk-blue/30 shrink-0">
+              <h3 className="text-lg font-semibold text-white">Feedback</h3>
+              <button
+                type="button"
+                onClick={() => setFeedbackPopupExpanded(false)}
+                className="p-1.5 rounded-lg text-white/80 hover:bg-white/20 hover:text-white transition-colors"
+                aria-label="Collapse feedback"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 space-y-4">
+              <div>
+                <label htmlFor="positives-input-popup" className="block text-sm font-medium text-gray-700 mb-1">Positives</label>
+                <textarea
+                  id="positives-input-popup"
+                  value={positives || ''}
+                  onChange={(e) => !isLocked && handlePositivesChange(e.target.value)}
+                  disabled={isLocked}
+                  placeholder="Main positives of this experience?"
+                  rows={2}
+                  className={`w-full px-3 py-2 rounded-lg text-sm text-realtalk-blue font-medium placeholder-gray-400 bg-white border border-gray-300 resize-none ${
+                    isLocked ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-realtalk-blue/50 focus:border-realtalk-blue'
+                  }`}
+                />
+              </div>
+              <div>
+                <label htmlFor="negatives-input-popup" className="block text-sm font-medium text-gray-700 mb-1">Negatives</label>
+                <textarea
+                  id="negatives-input-popup"
+                  value={negatives || ''}
+                  onChange={(e) => !isLocked && handleNegativesChange(e.target.value)}
+                  disabled={isLocked}
+                  placeholder="Main negatives?"
+                  rows={2}
+                  className={`w-full px-3 py-2 rounded-lg text-sm text-realtalk-blue font-medium placeholder-gray-400 bg-white border border-gray-300 resize-none ${
+                    isLocked ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-realtalk-blue/50 focus:border-realtalk-blue'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Use cases for this application?</label>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {USE_CASE_OPTIONS.map(({ key, label }) => (
+                    <label key={key} className={`flex items-center gap-2 cursor-pointer text-sm ${isLocked ? 'cursor-not-allowed opacity-60' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={useCases.includes(key)}
+                        onChange={(e) => !isLocked && handleUseCasesChange(key, e.target.checked)}
+                        disabled={isLocked}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-realtalk-blue focus:ring-realtalk-blue"
+                      />
+                      <span className="text-gray-800">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                {useCases.includes('other') && (
+                  <input
+                    type="text"
+                    value={useCasesOther || ''}
+                    onChange={(e) => !isLocked && handleUseCasesOtherChange(e.target.value)}
+                    disabled={isLocked}
+                    placeholder="Specify other..."
+                    className="mt-2 w-full px-3 py-2 rounded-lg text-sm text-realtalk-blue font-medium bg-white border border-gray-300"
+                  />
+                )}
+              </div>
+              <div>
+                <label htmlFor="concerns-input-popup" className="block text-sm font-medium text-gray-700 mb-1">Concerns?</label>
+                <textarea
+                  id="concerns-input-popup"
+                  value={concerns || ''}
+                  onChange={(e) => !isLocked && handleConcernsChange(e.target.value)}
+                  disabled={isLocked}
+                  placeholder="Accuracy, privacy, bias..."
+                  rows={2}
+                  className={`w-full px-3 py-2 rounded-lg text-sm text-realtalk-blue font-medium placeholder-gray-400 bg-white border border-gray-300 resize-none ${
+                    isLocked ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-realtalk-blue/50 focus:border-realtalk-blue'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">How accurate and useful was the feedback? (1-5)</label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => !isLocked && handleRatingClick(value)}
+                      disabled={isLocked}
+                      className={`transition-transform ${isLocked ? 'cursor-not-allowed opacity-60' : 'hover:scale-110 cursor-pointer'} ${
+                        rating && rating >= value ? 'text-yellow-400' : 'text-gray-500 hover:text-yellow-300'
+                      }`}
+                      aria-label={`Rate ${value} out of 5`}
+                    >
+                      <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                    </button>
+                  ))}
+                  {rating != null && <span className="ml-2 text-sm text-gray-600">{rating} / 5</span>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">How effective at finding accurate signals? (1-5)</label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => !isLocked && handleAdaptationRatingClick(value)}
+                      disabled={isLocked}
+                      className={`transition-transform ${isLocked ? 'cursor-not-allowed opacity-60' : 'hover:scale-110 cursor-pointer'} ${
+                        adaptationRating !== null && adaptationRating >= value ? 'text-amber-400' : 'text-gray-500 hover:text-amber-300'
+                      }`}
+                      aria-label={`Rate ${value} out of 5`}
+                    >
+                      <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                    </button>
+                  ))}
+                  {adaptationRating != null && <span className="ml-2 text-sm text-gray-600">{adaptationRating} / 5</span>}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="feedback-input-popup" className="block text-sm font-medium text-gray-700 mb-1">Additional feedback (optional)</label>
+                <textarea
+                  id="feedback-input-popup"
+                  value={feedback || ''}
+                  onChange={(e) => !isLocked && handleFeedbackChange(e.target.value)}
+                  disabled={isLocked}
+                  placeholder="Share your thoughts..."
+                  rows={3}
+                  className={`w-full px-3 py-2 rounded-lg text-sm text-realtalk-blue font-medium placeholder-gray-400 bg-white border border-gray-300 resize-none ${
+                    isLocked ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-realtalk-blue/50 focus:border-realtalk-blue'
+                  }`}
+                />
+              </div>
+              <div className="flex justify-end pt-2 border-t border-purple-200">
+                {isLocked ? (
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className="px-4 py-2 rounded-lg bg-realtalk-blue/20 hover:bg-realtalk-blue/30 text-realtalk-blue font-semibold text-sm transition-colors border border-realtalk-blue/40"
+                  >
+                    Edit feedback
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onSubmit}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-realtalk-blue to-purple-600 hover:from-realtalk-blue/90 hover:to-purple-600/90 disabled:opacity-50 text-white font-semibold text-sm transition-all"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit feedback'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

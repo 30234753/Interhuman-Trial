@@ -5,12 +5,30 @@ import SessionControls from '../components/SessionControls';
 import SessionSummary from '../components/SessionSummary';
 import TrialConsentModal from '../components/TrialConsentModal';
 import QuestionPopUp from '../components/QuestionPopUp';
+import CategorySignalsFeedbackModal from '../components/CategorySignalsFeedbackModal';
+import type { CategoryFeedbackData } from '../components/CategorySignalsFeedbackModal';
 import { useState, useEffect, useRef } from 'react';
-import { BehavioralSignal, Question } from '../lib/types';
+import { BehavioralSignal, Question, QuestionCategory } from '../lib/types';
 import { useSession } from '../lib/session-context';
 import { useRouter } from 'next/navigation';
 
-const QUESTIONS_PER_SESSION = 10;
+const QUESTIONS_PER_CATEGORY = 5;
+
+/** Keep signals paused this long after the category feedback modal is dismissed (flush pipeline). */
+const SIGNALS_COOLDOWN_MS_AFTER_POPUP = 2500;
+/** Pause signals this long before showing the category feedback modal (let in-flight analysis finish). */
+const SIGNALS_BUFFER_MS_BEFORE_POPUP = 2500;
+
+/** Category order for the trial: 5 questions per category in this order. */
+const CATEGORY_ORDER: QuestionCategory[] = [
+  'maths',
+  'casual',
+  'pub_quiz',
+  'open_ended',
+  'science',
+  'reasoning',
+  'sports',
+];
 
 /** Fisher–Yates shuffle (mutates array). */
 function shuffleInPlace<T>(arr: T[]): void {
@@ -20,11 +38,27 @@ function shuffleInPlace<T>(arr: T[]): void {
   }
 }
 
-/** Randomise order and limit to QUESTIONS_PER_SESSION. */
+/** Pick 5 questions per category (random within category), ordered by CATEGORY_ORDER. */
+function pickQuestionsByCategory(questions: Question[]): Question[] {
+  const byCategory = new Map<QuestionCategory, Question[]>();
+  for (const q of questions) {
+    const list = byCategory.get(q.category) ?? [];
+    list.push(q);
+    byCategory.set(q.category, list);
+  }
+  const result: Question[] = [];
+  for (const category of CATEGORY_ORDER) {
+    const list = byCategory.get(category) ?? [];
+    const copy = [...list];
+    shuffleInPlace(copy);
+    result.push(...copy.slice(0, QUESTIONS_PER_CATEGORY));
+  }
+  return result;
+}
+
+/** Alias for pickQuestionsByCategory (kept for compatibility with any cached/bundled references). */
 function pickQuestionsForSession(questions: Question[]): Question[] {
-  const copy = [...questions];
-  shuffleInPlace(copy);
-  return copy.slice(0, QUESTIONS_PER_SESSION);
+  return pickQuestionsByCategory(questions);
 }
 
 export default function TrialPage() {
@@ -36,6 +70,26 @@ export default function TrialPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   /** Current question index in the script; -1 = none, 0..n-1 = current. */
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
+  /** Answer windows (start/end time + category) for the current session, used for category feedback. */
+  const [answerWindows, setAnswerWindows] = useState<Array<{ startTime: number; endTime: number; category: string }>>([]);
+  /** After 5 questions of a category, show this modal; when set, we pause before the next question. */
+  const [categoryFeedbackModal, setCategoryFeedbackModal] = useState<{
+    category: string;
+    startTime: number;
+    endTime: number;
+  } | null>(null);
+  /** When category feedback modal is shown, this is the next index to go to on submit. */
+  const [pendingNextIndex, setPendingNextIndex] = useState<number | null>(null);
+  /** True for N seconds after user dismisses the category feedback modal (signals stay paused). */
+  const [signalsCooldownActive, setSignalsCooldownActive] = useState(false);
+  /** When set, we are in the pre-popup buffer; after delay we show categoryFeedbackModal. */
+  const [pendingCategoryModal, setPendingCategoryModal] = useState<{
+    category: string;
+    startTime: number;
+    endTime: number;
+  } | null>(null);
+  const pendingModalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cooldownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
     startTime: number;
@@ -46,7 +100,7 @@ export default function TrialPage() {
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
 
-  // Load questions from API on mount; randomise and limit to QUESTIONS_PER_SESSION
+  // Load questions from API on mount; 5 per category in category order
   useEffect(() => {
     let cancelled = false;
     fetch('/api/questions')
@@ -69,8 +123,21 @@ export default function TrialPage() {
     }
   }, [sessionActive, streamReady, questions.length, currentQuestionIndex]);
 
-  // Answer window: run analysis only while a question pop-up is shown
-  const showingPopUp = sessionActive && currentQuestionIndex >= 0 && currentQuestionIndex < questions.length;
+  // Clean up signal buffer/cooldown timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingModalTimeoutRef.current) clearTimeout(pendingModalTimeoutRef.current);
+      if (cooldownTimeoutRef.current) clearTimeout(cooldownTimeoutRef.current);
+    };
+  }, []);
+
+  // Answer window: run analysis only while a question pop-up is shown (not during feedback modal or pre/post buffer)
+  const showingPopUp =
+    sessionActive &&
+    currentQuestionIndex >= 0 &&
+    currentQuestionIndex < questions.length &&
+    !categoryFeedbackModal &&
+    !pendingCategoryModal;
 
   // Preserve session data before it's cleared
   useEffect(() => {
@@ -87,9 +154,21 @@ export default function TrialPage() {
   useEffect(() => {
     // Detect when session transitions from inactive to active (new session starting)
     if (!previousActiveState.current && sessionActive) {
-      // Clear summary data from previous session to allow real-time updates for new session
       setSummaryData(null);
       preservedSessionData.current = null;
+      setAnswerWindows([]);
+      setCategoryFeedbackModal(null);
+      setPendingNextIndex(null);
+      setSignalsCooldownActive(false);
+      setPendingCategoryModal(null);
+      if (pendingModalTimeoutRef.current) {
+        clearTimeout(pendingModalTimeoutRef.current);
+        pendingModalTimeoutRef.current = null;
+      }
+      if (cooldownTimeoutRef.current) {
+        clearTimeout(cooldownTimeoutRef.current);
+        cooldownTimeoutRef.current = null;
+      }
     }
     
     // Detect when session transitions from active to inactive (session ending)
@@ -144,7 +223,7 @@ export default function TrialPage() {
     setSummaryData(null);
   };
 
-  /** Save answer via API and advance to next question or end session. */
+  /** Save answer via API and advance to next question, show category feedback after 5, or end session. */
   const handleQuestionAnswer = async (
     windowStart: number,
     windowEnd: number,
@@ -174,11 +253,82 @@ export default function TrialPage() {
       console.error('Error saving session answer:', err);
     }
 
+    // Record this answer's window for category feedback
+    const newWindow = { startTime: windowStart, endTime: windowEnd, category: question.category };
+    setAnswerWindows((prev) => [...prev, newWindow]);
+
     const nextIndex = currentQuestionIndex + 1;
+
+    // After every 5 questions (end of a category block): buffer briefly then show signals feedback modal
+    if (nextIndex % QUESTIONS_PER_CATEGORY === 0 && nextIndex < questions.length) {
+      const windowsSoFar = answerWindows.length;
+      const blockStartTime = windowsSoFar >= 4 ? answerWindows[windowsSoFar - 4].startTime : windowStart;
+      const blockEndTime = windowEnd;
+      setPendingNextIndex(nextIndex);
+      // Pre-popup buffer: pause signals now, show modal after delay so in-flight analysis can finish
+      if (pendingModalTimeoutRef.current) clearTimeout(pendingModalTimeoutRef.current);
+      setPendingCategoryModal({ category: question.category, startTime: blockStartTime, endTime: blockEndTime });
+      pendingModalTimeoutRef.current = setTimeout(() => {
+        pendingModalTimeoutRef.current = null;
+        setPendingCategoryModal((prev) => {
+          if (prev) setCategoryFeedbackModal(prev);
+          return null;
+        });
+      }, SIGNALS_BUFFER_MS_BEFORE_POPUP);
+      return;
+    }
+
     if (nextIndex >= questions.length) {
       await stopSession();
     } else {
       setCurrentQuestionIndex(nextIndex);
+    }
+  };
+
+  /** Called when user submits the category signals feedback modal; save to API, start cooldown, then advance or end session. */
+  const handleCategoryFeedbackSubmit = async (data: CategoryFeedbackData) => {
+    const next = pendingNextIndex;
+    const modal = categoryFeedbackModal;
+    const sessionId = sessionState.sessionId;
+
+    setCategoryFeedbackModal(null);
+    setPendingNextIndex(null);
+
+    // Post-popup cooldown: keep signals paused for a few seconds so pipeline flushes before next question block
+    setSignalsCooldownActive(true);
+    if (cooldownTimeoutRef.current) clearTimeout(cooldownTimeoutRef.current);
+    cooldownTimeoutRef.current = setTimeout(() => {
+      cooldownTimeoutRef.current = null;
+      setSignalsCooldownActive(false);
+    }, SIGNALS_COOLDOWN_MS_AFTER_POPUP);
+
+    if (sessionId && modal) {
+      try {
+        const res = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'addCategoryFeedback',
+            sessionId,
+            category: modal.category,
+            accurate: data.accurate,
+            missedSignals: data.missedSignals ?? [],
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          console.error('Error saving category feedback:', res.status, errBody);
+        }
+      } catch (err) {
+        console.error('Error saving category feedback:', err);
+      }
+    }
+
+    if (next === null) return;
+    if (next >= questions.length) {
+      stopSession();
+    } else {
+      setCurrentQuestionIndex(next);
     }
   };
 
@@ -225,6 +375,7 @@ export default function TrialPage() {
                 autoStart={sessionActive}
                 enabled={true}
                 answerWindowActive={showingPopUp}
+                signalsPaused={!!categoryFeedbackModal || signalsCooldownActive || !!pendingCategoryModal}
                 analysisInterval={2000}
                 onStreamReady={(stream) => {
                   console.log('Stream ready:', stream);
@@ -255,6 +406,24 @@ export default function TrialPage() {
                   questionNumber={currentQuestionIndex + 1}
                   onAnswer={handleQuestionAnswer}
                   timeoutSeconds={20}
+                />
+              )}
+              {(pendingCategoryModal || (signalsCooldownActive && currentQuestionIndex >= 0 && currentQuestionIndex < questions.length)) && !categoryFeedbackModal && (
+                <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto animate-fade-in">
+                  <div className="glass-dark rounded-t-lg px-4 py-4 backdrop-blur-xl border-t border-gray-300/50 border-l border-r border-gray-300/30 shadow-2xl text-center">
+                    <p className="text-realtalk-blue font-medium">Please wait...</p>
+                    <p className="text-gray-500 text-sm mt-0.5">Preparing next section</p>
+                  </div>
+                </div>
+              )}
+              {categoryFeedbackModal && (
+                <CategorySignalsFeedbackModal
+                  category={categoryFeedbackModal.category}
+                  categoryLabel=""
+                  signals={sessionState.signals}
+                  startTime={categoryFeedbackModal.startTime}
+                  endTime={categoryFeedbackModal.endTime}
+                  onSubmit={handleCategoryFeedbackSubmit}
                 />
               )}
             </div>

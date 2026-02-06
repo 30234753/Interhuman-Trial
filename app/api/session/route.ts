@@ -330,6 +330,71 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case 'addCategoryFeedback': {
+        // Store category block feedback (signals accurate? + missed signals)
+        if (!sessionId) {
+          return NextResponse.json(
+            { success: false, error: 'Session ID is required' },
+            { status: 400 }
+          );
+        }
+
+        const { category, accurate, missedSignals } = body;
+        if (
+          !category ||
+          typeof category !== 'string' ||
+          !accurate ||
+          typeof accurate !== 'string' ||
+          !['yes', 'partial', 'no'].includes(accurate)
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'category and accurate (yes|partial|no) are required',
+            },
+            { status: 400 }
+          );
+        }
+
+        const missed = Array.isArray(missedSignals)
+          ? missedSignals.filter((s: unknown) => typeof s === 'string')
+          : [];
+
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError || !sessionData) {
+          return NextResponse.json(
+            { success: false, error: 'Session not found' },
+            { status: 404 }
+          );
+        }
+
+        const { error: insertError } = await supabase
+          .from('session_category_feedback')
+          .insert({
+            session_id: sessionId,
+            category: String(category).trim(),
+            accurate: accurate,
+            missed_signals: missed,
+          });
+
+        if (insertError) {
+          console.error('Error inserting category feedback:', insertError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to save category feedback', details: insertError.message },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+        });
+      }
+
       case 'end': {
         // Update session with end_time
         if (!sessionId) {
