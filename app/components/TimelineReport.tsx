@@ -35,6 +35,8 @@ export interface TimelineReportProps {
   onEdit?: () => void;
   isSubmitting?: boolean;
   isLocked?: boolean;
+  /** When true, the feedback popup is expanded on mount (e.g. when user lands on summary after trial). */
+  defaultExpandFeedback?: boolean;
 }
 
 /** Predefined use case options for "What use cases do you see this application being used in?" */
@@ -72,6 +74,15 @@ const SIGNAL_COLORS: Record<string, string> = {
 /**
  * Gets a human-readable label for a signal type
  */
+/** Format category key for display (e.g. pub_quiz -> Pub Quiz) */
+function formatCategoryLabel(category: string | undefined): string {
+  if (!category) return '';
+  return category
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 function getSignalLabel(signalType: string): string {
   const labels: Record<string, string> = {
     stress: 'Stress',
@@ -133,6 +144,7 @@ export default function TimelineReport({
   onEdit,
   isSubmitting = false,
   isLocked = false,
+  defaultExpandFeedback = false,
 }: TimelineReportProps) {
   const { signals, transcriptChunks = [], answers = [], startTime, endTime } = sessionData;
   const sessionDuration = endTime ? endTime - startTime : Date.now() - startTime;
@@ -157,8 +169,8 @@ export default function TimelineReport({
   const [radarScenarioId, setRadarScenarioId] = useState<string>(RADAR_SCENARIOS[0]?.id ?? 'general');
   // Carousel: current answer card index (Answers & signals per question)
   const [answerCardIndex, setAnswerCardIndex] = useState(0);
-  // Feedback popup: collapsed by default, user expands to answer
-  const [feedbackPopupExpanded, setFeedbackPopupExpanded] = useState(false);
+  // Feedback popup: expanded on mount when defaultExpandFeedback, else collapsed
+  const [feedbackPopupExpanded, setFeedbackPopupExpanded] = useState(defaultExpandFeedback);
 
   // Internal state for positives, negatives, rating, feedback, adaptation rating (used if not controlled externally)
   const [internalPositives, setInternalPositives] = useState<string>(externalPositives ?? '');
@@ -739,7 +751,14 @@ export default function TimelineReport({
                     className="rounded-lg p-4 border-2 border-realtalk-blue/30 bg-gradient-to-br from-realtalk-blue/10 via-purple-500/5 to-turquoise-500/10 shadow-sm"
                   >
                     <div className="mb-2">
-                      <span className="text-xs font-semibold text-realtalk-blue uppercase tracking-wide">Question {index + 1}</span>
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                        <span className="text-xs font-semibold text-realtalk-blue uppercase tracking-wide">Question {index + 1}</span>
+                        {answer.category && (
+                          <span className="text-xs font-medium text-purple-600 bg-purple-100/80 px-2 py-0.5 rounded">
+                            {formatCategoryLabel(answer.category)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm font-medium text-gray-800 mt-0.5">{answer.questionText}</p>
                     </div>
                     <div className="mb-2 text-sm">

@@ -50,6 +50,7 @@ export interface SessionAnswer {
   questionId: string;
   questionText: string;
   type: QuestionType;
+  category?: string; // e.g. maths, pub_quiz
   options: QuestionOption[] | null;
   correctAnswer: string | null;
   startTime: number;

@@ -525,6 +525,7 @@ async function fetchSessionData(
         id,
         text,
         type,
+        category,
         options,
         correct_answer
       )
@@ -548,6 +549,7 @@ async function fetchSessionData(
         questionId: row.question_id as string,
         questionText: (q.text as string) ?? '',
         type: (q.type as SessionAnswer['type']) ?? 'open_ended',
+        category: (q.category as string | undefined) ?? undefined,
         options,
         correctAnswer: (q.correct_answer as string | null) ?? null,
         startTime: Number(row.start_time),

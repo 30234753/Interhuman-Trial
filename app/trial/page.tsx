@@ -38,22 +38,35 @@ function shuffleInPlace<T>(arr: T[]): void {
   }
 }
 
-/** Pick 5 questions per category (random within category), ordered by CATEGORY_ORDER. */
+/** Normalize category for grouping (DB may return "Science" or "science" etc.). */
+function normalizeCategory(cat: string): string {
+  return (cat || '').toLowerCase().trim();
+}
+
+/** Pick up to 5 questions per category (random within category). Uses normalized category so DB casing (e.g. "Science") matches. */
 function pickQuestionsByCategory(questions: Question[]): Question[] {
-  const byCategory = new Map<QuestionCategory, Question[]>();
+  const byCategory = new Map<string, Question[]>();
   for (const q of questions) {
-    const list = byCategory.get(q.category) ?? [];
+    const key = normalizeCategory(q.category);
+    const list = byCategory.get(key) ?? [];
     list.push(q);
-    byCategory.set(q.category, list);
+    byCategory.set(key, list);
   }
   const result: Question[] = [];
   for (const category of CATEGORY_ORDER) {
-    const list = byCategory.get(category) ?? [];
+    const key = normalizeCategory(category);
+    const list = byCategory.get(key) ?? [];
+    if (list.length === 0) continue; // skip categories with no questions in the bank
     const copy = [...list];
     shuffleInPlace(copy);
     result.push(...copy.slice(0, QUESTIONS_PER_CATEGORY));
   }
   return result;
+}
+
+/** Format category for display (e.g. pub_quiz -> Pub quiz). */
+function formatCategoryForDisplay(cat: string): string {
+  return cat.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
 /** Alias for pickQuestionsByCategory (kept for compatibility with any cached/bundled references). */
@@ -66,8 +79,10 @@ export default function TrialPage() {
   const [streamStatus, setStreamStatus] = useState<string>('Not started');
   /** True when VideoPlayer has called onStreamReady (camera rolling). First question shows only after this. */
   const [streamReady, setStreamReady] = useState<boolean>(false);
-  /** Questions for this run (loaded from API, ordered MC then open-ended). */
+  /** Questions for this run (loaded from API, 5 per category in order). */
   const [questions, setQuestions] = useState<Question[]>([]);
+  /** Per-category question count for this run (e.g. { maths: 5, reasoning: 4 }) so we can show "27 questions (5 Maths, 4 Reasoning, …)". */
+  const [questionCountByCategory, setQuestionCountByCategory] = useState<Record<string, number>>({});
   /** Current question index in the script; -1 = none, 0..n-1 = current. */
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
   /** Answer windows (start/end time + category) for the current session, used for category feedback. */
@@ -100,13 +115,21 @@ export default function TrialPage() {
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
 
-  // Load questions from API on mount; 5 per category in category order
+  // Load questions from API on mount; up to 5 per category (only categories with questions in the bank)
   useEffect(() => {
     let cancelled = false;
     fetch('/api/questions')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('Failed to fetch questions'))))
       .then((data: Question[]) => {
-        if (!cancelled) setQuestions(pickQuestionsForSession(data));
+        if (cancelled) return;
+        const list = pickQuestionsForSession(data);
+        setQuestions(list);
+        const byCategory: Record<string, number> = {};
+        for (const q of list) {
+          const key = normalizeCategory(q.category);
+          byCategory[key] = (byCategory[key] ?? 0) + 1;
+        }
+        setQuestionCountByCategory(byCategory);
       })
       .catch((err) => {
         if (!cancelled) console.error('Error loading questions:', err);
@@ -259,8 +282,8 @@ export default function TrialPage() {
 
     const nextIndex = currentQuestionIndex + 1;
 
-    // After every 5 questions (end of a category block): buffer briefly then show signals feedback modal
-    if (nextIndex % QUESTIONS_PER_CATEGORY === 0 && nextIndex < questions.length) {
+    // After every 5 questions (end of a category block): buffer briefly then show signals feedback modal (including last block)
+    if (nextIndex % QUESTIONS_PER_CATEGORY === 0) {
       const windowsSoFar = answerWindows.length;
       const blockStartTime = windowsSoFar >= 4 ? answerWindows[windowsSoFar - 4].startTime : windowStart;
       const blockEndTime = windowEnd;
@@ -359,6 +382,19 @@ export default function TrialPage() {
             className="text-realtalk-blue text-lg sm:text-lg md:text-xl mt-2 font-medium">
             Real-time behavioural analysis powered by AI
           </p>
+          {questions.length > 0 && (
+            <p className="text-gray-500 text-sm mt-2" title="Question count depends on how many are in the bank per category (up to 5 each).">
+              This session: <span className="font-semibold text-realtalk-blue">{questions.length} questions</span>
+              {Object.keys(questionCountByCategory).length > 0 && (
+                <span className="ml-1">
+                  ({Object.entries(questionCountByCategory)
+                    .sort((a, b) => CATEGORY_ORDER.indexOf(a[0] as QuestionCategory) - CATEGORY_ORDER.indexOf(b[0] as QuestionCategory))
+                    .map(([cat, n]) => `${formatCategoryForDisplay(cat)} ${n}`)
+                    .join(', ')})
+                </span>
+              )}
+            </p>
+          )}
         </div>
         
         {/* Session Controls */}
@@ -367,7 +403,7 @@ export default function TrialPage() {
         </div>
 
         {/* Video Player and Session Summary - Side by Side */}
-        <div className="w-full grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="w-full grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 lg:gap-6 animate-fade-in-up items-start" style={{ animationDelay: '0.2s' }}>
           {/* Video Player Container - Main Focus */}
           <div className="w-full relative">
             <div className="glass-dark rounded-2xl p-4 md:p-6 backdrop-blur-xl border border-gray-200 shadow-2xl relative">
@@ -429,8 +465,8 @@ export default function TrialPage() {
             </div>
           </div>
 
-          {/* Session Summary - Sidebar, Always visible */}
-          <div className="w-full flex">
+          {/* Session Summary - Sidebar, fixed height with scroll so it doesn't jolt the page */}
+          <div className="w-full flex h-[calc(100vh-7rem)] max-h-[calc(100vh-7rem)] min-h-0 lg:sticky lg:top-4">
             <SessionSummary
               signals={summaryData?.signals || (sessionActive ? sessionState.signals : [])}
               startTime={summaryData?.startTime || sessionState.startTime || null}
@@ -438,7 +474,7 @@ export default function TrialPage() {
               isLive={sessionActive && !summaryData}
               onClose={summaryData ? handleCloseSummary : undefined}
               sessionId={sessionState.sessionId}
-              className="w-full"
+              className="w-full h-full min-h-0"
             />
           </div>
         </div>

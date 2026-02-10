@@ -289,12 +289,19 @@ export default function QuestionPopUp({
   return (
     <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto animate-fade-in">
       <div className="glass-dark rounded-t-lg px-4 py-3 backdrop-blur-xl border-t border-gray-300/50 border-l border-r border-gray-300/30 shadow-2xl">
-        {/* Question row: prefix + full text, separate above answers */}
+        {/* Question row: category, number, full text */}
         <div className="mb-3">
-          <p className="text-gray-900 text-sm font-medium break-words" title={question.text}>
+          <div className="flex flex-wrap items-center gap-2 mb-0.5">
             {questionNumber != null && (
-              <span className="text-realtalk-blue font-semibold mr-1.5">Question {questionNumber}:</span>
+              <span className="text-realtalk-blue font-semibold">Question {questionNumber}</span>
             )}
+            {question.category && (
+              <span className="text-xs font-medium text-purple-600 bg-purple-100/80 px-2 py-0.5 rounded">
+                {question.category.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+              </span>
+            )}
+          </div>
+          <p className="text-gray-900 text-sm font-medium break-words mt-0.5" title={question.text}>
             {question.text}
           </p>
         </div>

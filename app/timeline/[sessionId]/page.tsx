@@ -323,6 +323,7 @@ export default function TimelineReportPage() {
               onEdit={handleEdit}
               isSubmitting={saving}
               isLocked={isLocked}
+              defaultExpandFeedback={true}
             />
           </div>
         

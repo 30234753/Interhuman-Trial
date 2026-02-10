@@ -301,11 +301,17 @@ export default function Subtitles({
         // Start MediaRecorder BEFORE starting transcription session to ensure audio flows immediately
         mediaRecorder.start(1000);
 
-        // NOW start transcription session - MediaRecorder is already running and will send audio immediately
+        // Show "Listening" as soon as we're capturing audio (don't wait for Deepgram Open)
+        isListeningRef.current = true;
+        setIsListening(true);
+        setError(null);
+
+        // NOW start transcription session - MediaRecorder is already running and will send audio when connection opens
         await startTranscriptionSession(sessionId);
       } catch (error) {
         console.error('[Subtitles] Error initializing transcription:', error);
         setError(error instanceof Error ? error.message : 'Failed to initialize transcription');
+        isListeningRef.current = false;
         setIsListening(false);
       }
     };
@@ -393,6 +399,10 @@ export default function Subtitles({
                       Listening for speech...
                     </p>
                   </>
+                ) : stream?.active ? (
+                  <p className="text-gray-500 text-xs md:text-sm italic">
+                    Connecting to transcription...
+                  </p>
                 ) : (
                   <p className="text-gray-500 text-xs md:text-sm italic">
                     Waiting for audio...
