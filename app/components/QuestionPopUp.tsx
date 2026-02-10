@@ -180,6 +180,8 @@ export interface QuestionPopUpProps {
   ) => void;
   /** Timeout in seconds; after this, onAnswer is called with current transcript (or empty). Default 20. */
   timeoutSeconds?: number;
+  /** Position of the popup: "top" or "bottom". Default "bottom". */
+  position?: 'top' | 'bottom';
 }
 
 export default function QuestionPopUp({
@@ -188,6 +190,7 @@ export default function QuestionPopUp({
   onWindowStart,
   onAnswer,
   timeoutSeconds = DEFAULT_TIMEOUT_SECONDS,
+  position = 'bottom',
 }: QuestionPopUpProps) {
   const windowStartRef = useRef<number>(Date.now());
   const [secondsLeft, setSecondsLeft] = useState(timeoutSeconds);
@@ -287,8 +290,8 @@ export default function QuestionPopUp({
   const options = question.options ?? [];
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-30 pointer-events-auto animate-fade-in">
-      <div className="glass-dark rounded-t-lg px-4 py-3 backdrop-blur-xl border-t border-gray-300/50 border-l border-r border-gray-300/30 shadow-2xl">
+    <div className={`absolute left-0 right-0 z-30 pointer-events-auto animate-fade-in ${position === 'top' ? 'top-0' : 'bottom-0'}`}>
+      <div className={`glass-dark px-4 py-3 backdrop-blur-xl border-l border-r border-gray-300/30 shadow-2xl ${position === 'top' ? 'rounded-b-lg border-b border-gray-300/50' : 'rounded-t-lg border-t border-gray-300/50'}`}>
         {/* Question row: category, number, full text */}
         <div className="mb-3">
           <div className="flex flex-wrap items-center gap-2 mb-0.5">

@@ -119,7 +119,7 @@ export default function BehavioralIndicator({
   const customStyle = position === 'custom' 
     ? { 
         transform: `translate(calc(-50% + ${customOffset}px), 0)`,
-        bottom: `${150 + customVerticalOffset}px`,
+        bottom: `${100 + customVerticalOffset}px`,
       }
     : {};
 

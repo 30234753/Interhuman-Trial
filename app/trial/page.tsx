@@ -111,7 +111,7 @@ export default function TrialPage() {
     endTime: number;
   } | null>(null);
   const [liveEndTime, setLiveEndTime] = useState<number>(Date.now());
-  const { updateSignals, isActive: sessionActive, sessionState, stopSession } = useSession();
+  const { updateSignals, isActive: sessionActive, sessionState, stopSession, startSession } = useSession();
   const previousActiveState = useRef<boolean>(false);
   const preservedSessionData = useRef<{ signals: BehavioralSignal[]; startTime: number; sessionId: string | null } | null>(null);
 
@@ -413,6 +413,8 @@ export default function TrialPage() {
                 answerWindowActive={showingPopUp}
                 signalsPaused={!!categoryFeedbackModal || signalsCooldownActive || !!pendingCategoryModal}
                 analysisInterval={2000}
+                idleButtonLabel="Start Session"
+                onIdleButtonClick={startSession}
                 onStreamReady={(stream) => {
                   console.log('Stream ready:', stream);
                   setStreamStatus('Streaming active - Analysis enabled');
@@ -442,6 +444,7 @@ export default function TrialPage() {
                   questionNumber={currentQuestionIndex + 1}
                   onAnswer={handleQuestionAnswer}
                   timeoutSeconds={20}
+                  position="top"
                 />
               )}
               {(pendingCategoryModal || (signalsCooldownActive && currentQuestionIndex >= 0 && currentQuestionIndex < questions.length)) && !categoryFeedbackModal && (

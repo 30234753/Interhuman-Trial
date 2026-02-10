@@ -678,7 +678,7 @@ export default function VideoPlayer({
         compact={false}
       />
 
-      {/* Subtitles overlay - disabled when signals paused so transcript is not captured during feedback/buffers */}
+      {/* Subtitles overlay at bottom of camera view - disabled when signals paused so transcript is not captured during feedback/buffers */}
       <Subtitles
         enabled={enabled && isStreamActiveRef.current && !signalsPaused}
         stream={signalsPaused ? null : currentStream}
@@ -687,7 +687,7 @@ export default function VideoPlayer({
 
       {/* Analysis status indicator */}
       {isAnalyzing && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-black/90 backdrop-blur-md px-4 py-2 rounded-full border border-turquoise-500/50 animate-scale-in shadow-lg" style={{ boxShadow: '0 0 20px rgba(20, 184, 166, 0.4)' }}>
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40 bg-black/90 backdrop-blur-md px-4 py-2 rounded-full border border-turquoise-500/50 animate-scale-in shadow-lg" style={{ boxShadow: '0 0 20px rgba(20, 184, 166, 0.4)' }}>
           <div className="flex items-center gap-2">
             <div className="relative">
               <div className="animate-spin rounded-full h-3 w-3 border-2 border-turquoise-400/30"></div>
