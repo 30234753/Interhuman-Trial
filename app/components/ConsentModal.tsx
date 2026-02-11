@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import PrivacyNoticeModal from './PrivacyNoticeModal';
 
 const CONSENT_STORAGE_KEY = 'inhuman-trial-consent-accepted';
+const PRE_CREATED_SESSION_KEY = 'inhuman-trial-pre-created-session';
 
 type ConsentModalProps = {
   /** When true, show every visit, decline redirects home, no persistence. */
@@ -38,8 +39,22 @@ export default function ConsentModal({ trialMode = false }: ConsentModalProps) {
     }
   }, [trialMode]);
 
-  const handleAccept = () => {
-    if (!trialMode && typeof window !== 'undefined') {
+  const handleAccept = async () => {
+    if (trialMode && typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'createWithConsent' }),
+        });
+        const data = await res.json();
+        if (data.success && data.sessionId) {
+          sessionStorage.setItem(PRE_CREATED_SESSION_KEY, data.sessionId);
+        }
+      } catch (error) {
+        console.error('Failed to record consent in database:', error);
+      }
+    } else if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(CONSENT_STORAGE_KEY, 'true');
       } catch (error) {

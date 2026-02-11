@@ -48,6 +48,41 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case 'createWithConsent': {
+        // Create a new session and record consent timestamp (used when user accepts consent on trial page)
+        const startTime = new Date().toISOString();
+        const consentTime = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('sessions')
+          .insert({
+            start_time: startTime,
+            consent_given_at: consentTime,
+          })
+          .select('id, start_time')
+          .single();
+
+        if (error) {
+          console.error('Error creating session with consent:', error);
+          return NextResponse.json(
+            { success: false, error: 'Failed to create session' },
+            { status: 500 }
+          );
+        }
+
+        const newSessionId = data.id;
+        const sessionData: SessionData = {
+          id: newSessionId,
+          startTime: new Date(data.start_time).getTime(),
+          signals: [],
+        };
+
+        return NextResponse.json({
+          success: true,
+          sessionId: newSessionId,
+          sessionData,
+        });
+      }
+
       case 'update': {
         // Insert new signals into the database in batches
         if (!sessionId) {

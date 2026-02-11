@@ -24,10 +24,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const startSession = useCallback(async () => {
     if (sessionState.isActive) {
-      return;
+      return null;
     }
 
     try {
+      // Use session created at consent time (trial flow) if present
+      if (typeof window !== 'undefined') {
+        const preCreated = sessionStorage.getItem('inhuman-trial-pre-created-session');
+        if (preCreated) {
+          sessionStorage.removeItem('inhuman-trial-pre-created-session');
+          const startTime = Date.now();
+          setSessionState({
+            isActive: true,
+            sessionId: preCreated,
+            startTime,
+            signals: [],
+          });
+          return preCreated;
+        }
+      }
+
       const response = await fetch('/api/session', {
         method: 'POST',
         headers: {
@@ -52,7 +68,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         startTime,
         signals: [],
       });
-      
+
       return newSessionId;
     } catch (error) {
       console.error('Error starting session:', error);
