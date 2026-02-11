@@ -89,7 +89,7 @@ export default function ConsentModal() {
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold text-realtalk-blue mb-2">What we store (30 days)</h3>
               <p className="text-sm leading-relaxed">
-                We store the conversation transcript/chat log, feedback, and emotion / non-verbal tags generated during the session for up to 30 days, to evaluate and improve the prototype.
+                We Store the conversation transcript/chat log, feedback, and emotion / non-verbal tags generated during the session for up to 30 days, to evaluate and improve the prototype.
               </p>
             </div>
 
