@@ -1,17 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import PrivacyNoticeModal from './PrivacyNoticeModal';
 
 const CONSENT_STORAGE_KEY = 'inhuman-trial-consent-accepted';
 
-export default function ConsentModal() {
+type ConsentModalProps = {
+  /** When true, show every visit, decline redirects home, no persistence. */
+  trialMode?: boolean;
+};
+
+export default function ConsentModal({ trialMode = false }: ConsentModalProps) {
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    if (trialMode) {
+      setShowModal(true);
+      return;
+    }
     // Check if user has already accepted (only on client side)
     if (typeof window !== 'undefined') {
       try {
@@ -20,17 +31,15 @@ export default function ConsentModal() {
           setShowModal(true);
         }
       } catch (error) {
-        // If localStorage is not available, show the modal
         setShowModal(true);
       }
     } else {
-      // During SSR, don't show modal
       setShowModal(false);
     }
-  }, []);
+  }, [trialMode]);
 
   const handleAccept = () => {
-    if (typeof window !== 'undefined') {
+    if (!trialMode && typeof window !== 'undefined') {
       try {
         localStorage.setItem(CONSENT_STORAGE_KEY, 'true');
       } catch (error) {
@@ -38,6 +47,14 @@ export default function ConsentModal() {
       }
     }
     setShowModal(false);
+  };
+
+  const handleDecline = () => {
+    if (trialMode) {
+      router.push('/');
+    } else {
+      alert('You must accept the terms to use this application.');
+    }
   };
 
   // Don't render until mounted to avoid hydration mismatch
@@ -129,7 +146,7 @@ export default function ConsentModal() {
               <ul className="space-y-2 text-sm text-realtalk-blue/70 list-disc list-inside">
                 <li>Access to your camera and microphone for real-time analysis</li>
                 <li>Processing by our providers (Interhuman and Deepgram) to generate feedback and transcription</li>
-                <li>Storage of the transcript/chat log, feedback,and generated tags for prototype evaluation (up to 30 days)</li>
+                <li>Storage of the transcript/chat log, feedback, and generated tags for prototype evaluation (up to 30 days)</li>
               </ul>
             </div>
 
@@ -153,9 +170,7 @@ export default function ConsentModal() {
               I Agree
             </button>
             <button
-              onClick={() => {
-                alert('You must accept the terms to use this application.');
-              }}
+              onClick={handleDecline}
               className="flex-1 px-6 py-3 glass-dark border border-gray-200 hover:border-gray-300 text-realtalk-blue/70 hover:text-realtalk-blue font-semibold rounded-lg transition-all duration-200"
             >
               Decline
@@ -163,7 +178,9 @@ export default function ConsentModal() {
           </div>
 
           <p className="text-xs text-center text-gray-500 pt-2">
-            You can revoke this consent at any time by clearing your browser&apos;s local storage or revoking camera/microphone permissions.
+            {trialMode
+              ? "This consent is required each time you access the trial page"
+              : 'You can revoke this consent at any time by clearing your browser\'s local storage or revoking camera/microphone permissions.'}
           </p>
         </div>
       </div>

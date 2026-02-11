@@ -3,7 +3,7 @@
 import VideoPlayer from '../components/VideoPlayer';
 import SessionControls from '../components/SessionControls';
 import SessionSummary from '../components/SessionSummary';
-import TrialConsentModal from '../components/TrialConsentModal';
+import ConsentModal from '../components/ConsentModal';
 import QuestionPopUp from '../components/QuestionPopUp';
 import CategorySignalsFeedbackModal from '../components/CategorySignalsFeedbackModal';
 import type { CategoryFeedbackData } from '../components/CategorySignalsFeedbackModal';
@@ -357,7 +357,7 @@ export default function TrialPage() {
 
   return (
     <>
-      <TrialConsentModal />
+      <ConsentModal trialMode />
       <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24 relative overflow-x-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
