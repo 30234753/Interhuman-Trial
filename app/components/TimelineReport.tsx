@@ -910,7 +910,7 @@ export default function TimelineReport({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Use cases for this application?</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">What use cases could you see for emotion detection software?</label>
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {USE_CASE_OPTIONS.map(({ key, label }) => (
                     <label key={key} className={`flex items-center gap-2 cursor-pointer text-sm ${isLocked ? 'cursor-not-allowed opacity-60' : ''}`}>
