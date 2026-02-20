@@ -506,6 +506,19 @@ export default function TrialPage() {
             />
           </div>
         </div>
+                  {/* Instructions */}
+                  <div className="mt-6 glass-dark rounded-2xl p-6 backdrop-blur-xl border border-white/10 shadow-2xl text-left">
+            <h3 className="text-xl font-semibold mb-4 text-realtalk-dark">Session Instructions</h3>
+            <ol className="list-decimal list-outside pl-5 space-y-2.5 text-base md:text-md text-gray-700 leading-relaxed">
+              <li>Click &quot;Start Recording&quot; and grant microphone permissions.</li>
+              <li>Speak clearly into your microphone and ensure the camera captures your body language.</li>
+              <li>Watch the Live Transcription area and body language analysis in the video player.</li>
+              <li>Answer each question as best you can.</li>
+              <li>After 5 questions of a category, you will be shown a brief feedback page to review the body language analysis.</li>
+              <li>When you have answered all the questions, you will be shown the report page.</li>
+              <li>In the timeline report, you can review your results and give feedback.</li>
+            </ol>
+          </div>
       </div>
     </main>
     </>
