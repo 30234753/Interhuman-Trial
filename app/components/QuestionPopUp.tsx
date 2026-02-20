@@ -178,8 +178,8 @@ export interface QuestionPopUpProps {
     spokenAnswer: string,
     correct: boolean | null
   ) => void;
-  /** Timeout in seconds; after this, onAnswer is called with current transcript (or empty). Default 20. */
-  timeoutSeconds?: number;
+  /** Timeout in seconds; after this, onAnswer is called with current transcript (or empty). Omit or null = no limit (e.g. for open_ended). Default 20 for multiple_choice. */
+  timeoutSeconds?: number | null;
   /** Position of the popup: "top" or "bottom". Default "bottom". */
   position?: 'top' | 'bottom';
 }
@@ -193,7 +193,8 @@ export default function QuestionPopUp({
   position = 'bottom',
 }: QuestionPopUpProps) {
   const windowStartRef = useRef<number>(Date.now());
-  const [secondsLeft, setSecondsLeft] = useState(timeoutSeconds);
+  const hasTimeLimit = timeoutSeconds != null && timeoutSeconds > 0;
+  const [secondsLeft, setSecondsLeft] = useState(hasTimeLimit ? timeoutSeconds! : 0);
   const [answered, setAnswered] = useState(false);
   /** Highlighted MC option when user says A/B/C; advance only on Done or timeout. */
   const [highlightedLetter, setHighlightedLetter] = useState<string | null>(null);
@@ -224,7 +225,7 @@ export default function QuestionPopUp({
     [onAnswer, answered]
   );
 
-  // When question changes (or on mount): start/restart timer so second question gets a fresh 20s
+  // When question changes (or on mount): start/restart timer only if time limit is set
   useEffect(() => {
     answeredRef.current = false;
     setAnswered(false);
@@ -233,24 +234,28 @@ export default function QuestionPopUp({
     clearTranscript();
     onWindowStart?.();
 
-    setSecondsLeft(timeoutSeconds);
-    intervalIdRef.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          if (intervalIdRef.current) {
-            clearInterval(intervalIdRef.current);
-            intervalIdRef.current = null;
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const limit = timeoutSeconds != null && timeoutSeconds > 0 ? timeoutSeconds : 0;
+    setSecondsLeft(limit);
 
-    timeoutIdRef.current = setTimeout(() => {
-      timeoutIdRef.current = null;
-      endWindow(finalTranscriptRef.current, null);
-    }, timeoutSeconds * 1000);
+    if (limit > 0) {
+      intervalIdRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            if (intervalIdRef.current) {
+              clearInterval(intervalIdRef.current);
+              intervalIdRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      timeoutIdRef.current = setTimeout(() => {
+        timeoutIdRef.current = null;
+        endWindow(finalTranscriptRef.current, null);
+      }, limit * 1000);
+    }
 
     return () => {
       if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
@@ -332,9 +337,13 @@ export default function QuestionPopUp({
             <span className="text-gray-600 text-xs sm:text-sm flex-shrink-0">Answer in your own words, then Done.</span>
           )}
           <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            <span className="text-realtalk-blue text-sm font-mono tabular-nums" aria-live="polite">
-              {secondsLeft}s
-            </span>
+            {hasTimeLimit ? (
+              <span className="text-realtalk-blue text-sm font-mono tabular-nums" aria-live="polite">
+                {secondsLeft}s
+              </span>
+            ) : (
+              <span className="text-gray-400 text-sm" aria-live="polite">No time limit</span>
+            )}
             <button
               type="button"
               onClick={handleDone}

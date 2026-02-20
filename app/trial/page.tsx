@@ -105,6 +105,11 @@ export default function TrialPage() {
   } | null>(null);
   const pendingModalTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cooldownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Shown for 2s in centre of video when transitioning to next question (or category modal). */
+  const [showNextQuestionOverlay, setShowNextQuestionOverlay] = useState(false);
+  const nextQuestionOverlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Stored action to run after "Next Question" overlay (advance index or show category modal). */
+  const pendingAfterOverlayRef = useRef<(() => void) | null>(null);
   const [summaryData, setSummaryData] = useState<{
     signals: BehavioralSignal[];
     startTime: number;
@@ -146,21 +151,23 @@ export default function TrialPage() {
     }
   }, [sessionActive, streamReady, questions.length, currentQuestionIndex]);
 
-  // Clean up signal buffer/cooldown timeouts on unmount
+  // Clean up signal buffer/cooldown/overlay timeouts on unmount
   useEffect(() => {
     return () => {
       if (pendingModalTimeoutRef.current) clearTimeout(pendingModalTimeoutRef.current);
       if (cooldownTimeoutRef.current) clearTimeout(cooldownTimeoutRef.current);
+      if (nextQuestionOverlayTimeoutRef.current) clearTimeout(nextQuestionOverlayTimeoutRef.current);
     };
   }, []);
 
-  // Answer window: run analysis only while a question pop-up is shown (not during feedback modal or pre/post buffer)
+  // Answer window: run analysis only while a question pop-up is shown (not during feedback modal, overlay, or pre/post buffer)
   const showingPopUp =
     sessionActive &&
     currentQuestionIndex >= 0 &&
     currentQuestionIndex < questions.length &&
     !categoryFeedbackModal &&
-    !pendingCategoryModal;
+    !pendingCategoryModal &&
+    !showNextQuestionOverlay;
 
   // Preserve session data before it's cleared
   useEffect(() => {
@@ -184,6 +191,7 @@ export default function TrialPage() {
       setPendingNextIndex(null);
       setSignalsCooldownActive(false);
       setPendingCategoryModal(null);
+      setShowNextQuestionOverlay(false);
       if (pendingModalTimeoutRef.current) {
         clearTimeout(pendingModalTimeoutRef.current);
         pendingModalTimeoutRef.current = null;
@@ -191,6 +199,10 @@ export default function TrialPage() {
       if (cooldownTimeoutRef.current) {
         clearTimeout(cooldownTimeoutRef.current);
         cooldownTimeoutRef.current = null;
+      }
+      if (nextQuestionOverlayTimeoutRef.current) {
+        clearTimeout(nextQuestionOverlayTimeoutRef.current);
+        nextQuestionOverlayTimeoutRef.current = null;
       }
     }
     
@@ -282,30 +294,42 @@ export default function TrialPage() {
 
     const nextIndex = currentQuestionIndex + 1;
 
-    // After every 5 questions (end of a category block): buffer briefly then show signals feedback modal (including last block)
+    // Session ends: no overlay
+    if (nextIndex >= questions.length) {
+      await stopSession();
+      return;
+    }
+
+    // Show "Next Question" overlay for 2s in centre of video, then advance or show category modal
+    if (nextQuestionOverlayTimeoutRef.current) clearTimeout(nextQuestionOverlayTimeoutRef.current);
+    setShowNextQuestionOverlay(true);
+
     if (nextIndex % QUESTIONS_PER_CATEGORY === 0) {
       const windowsSoFar = answerWindows.length;
       const blockStartTime = windowsSoFar >= 4 ? answerWindows[windowsSoFar - 4].startTime : windowStart;
       const blockEndTime = windowEnd;
-      setPendingNextIndex(nextIndex);
-      // Pre-popup buffer: pause signals now, show modal after delay so in-flight analysis can finish
-      if (pendingModalTimeoutRef.current) clearTimeout(pendingModalTimeoutRef.current);
-      setPendingCategoryModal({ category: question.category, startTime: blockStartTime, endTime: blockEndTime });
-      pendingModalTimeoutRef.current = setTimeout(() => {
-        pendingModalTimeoutRef.current = null;
-        setPendingCategoryModal((prev) => {
-          if (prev) setCategoryFeedbackModal(prev);
-          return null;
-        });
-      }, SIGNALS_BUFFER_MS_BEFORE_POPUP);
-      return;
+      pendingAfterOverlayRef.current = () => {
+        setPendingNextIndex(nextIndex);
+        if (pendingModalTimeoutRef.current) clearTimeout(pendingModalTimeoutRef.current);
+        setPendingCategoryModal({ category: question.category, startTime: blockStartTime, endTime: blockEndTime });
+        pendingModalTimeoutRef.current = setTimeout(() => {
+          pendingModalTimeoutRef.current = null;
+          setPendingCategoryModal((prev) => {
+            if (prev) setCategoryFeedbackModal(prev);
+            return null;
+          });
+        }, SIGNALS_BUFFER_MS_BEFORE_POPUP);
+      };
+    } else {
+      pendingAfterOverlayRef.current = () => setCurrentQuestionIndex(nextIndex);
     }
 
-    if (nextIndex >= questions.length) {
-      await stopSession();
-    } else {
-      setCurrentQuestionIndex(nextIndex);
-    }
+    nextQuestionOverlayTimeoutRef.current = setTimeout(() => {
+      nextQuestionOverlayTimeoutRef.current = null;
+      setShowNextQuestionOverlay(false);
+      pendingAfterOverlayRef.current?.();
+      pendingAfterOverlayRef.current = null;
+    }, 2000);
   };
 
   /** Called when user submits the category signals feedback modal; save to API, start cooldown, then advance or end session. */
@@ -411,10 +435,11 @@ export default function TrialPage() {
                 autoStart={sessionActive}
                 enabled={true}
                 answerWindowActive={showingPopUp}
-                signalsPaused={!!categoryFeedbackModal || signalsCooldownActive || !!pendingCategoryModal}
+                signalsPaused={!!categoryFeedbackModal || signalsCooldownActive || !!pendingCategoryModal || showNextQuestionOverlay}
                 analysisInterval={2000}
                 idleButtonLabel="Start Session"
                 onIdleButtonClick={startSession}
+                sessionActive={sessionActive}
                 onStreamReady={(stream) => {
                   console.log('Stream ready:', stream);
                   setStreamStatus('Streaming active - Analysis enabled');
@@ -443,7 +468,7 @@ export default function TrialPage() {
                   question={questions[currentQuestionIndex]}
                   questionNumber={currentQuestionIndex + 1}
                   onAnswer={handleQuestionAnswer}
-                  timeoutSeconds={20}
+                  timeoutSeconds={questions[currentQuestionIndex].type === 'open_ended' ? null : 20}
                   position="top"
                 />
               )}
