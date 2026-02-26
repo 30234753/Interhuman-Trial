@@ -5,7 +5,7 @@ import { metaphone } from 'metaphone';
 import type { Question } from '@/app/lib/types';
 import { useTranscript } from '@/app/lib/transcript-context';
 
-const DEFAULT_TIMEOUT_SECONDS = 20;
+const DEFAULT_TIMEOUT_SECONDS = 30;
 
 /** Letters that can be parsed (only those in the question's options, e.g. A,B,C). */
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
@@ -178,7 +178,7 @@ export interface QuestionPopUpProps {
     spokenAnswer: string,
     correct: boolean | null
   ) => void;
-  /** Timeout in seconds; after this, onAnswer is called with current transcript (or empty). Omit or null = no limit (e.g. for open_ended). Default 20 for multiple_choice. */
+  /** Timeout in seconds; after this, onAnswer is called with current transcript (or empty). Omit or null = no limit (e.g. for open_ended). Default 30 for multiple_choice. */
   timeoutSeconds?: number | null;
   /** Position of the popup: "top" or "bottom". Default "bottom". */
   position?: 'top' | 'bottom';

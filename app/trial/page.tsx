@@ -468,7 +468,7 @@ export default function TrialPage() {
                   question={questions[currentQuestionIndex]}
                   questionNumber={currentQuestionIndex + 1}
                   onAnswer={handleQuestionAnswer}
-                  timeoutSeconds={questions[currentQuestionIndex].type === 'open_ended' ? null : 20}
+                  timeoutSeconds={questions[currentQuestionIndex].type === 'open_ended' ? null : 30}
                   position="top"
                 />
               )}
