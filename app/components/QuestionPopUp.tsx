@@ -6,6 +6,8 @@ import type { Question } from '@/app/lib/types';
 import { useTranscript } from '@/app/lib/transcript-context';
 
 const DEFAULT_TIMEOUT_SECONDS = 30;
+/** Minimum seconds before Done is enabled (so users don't rush and miss signals). */
+const MIN_SECONDS_BEFORE_DONE = 10;
 
 /** Letters that can be parsed (only those in the question's options, e.g. A,B,C). */
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
@@ -196,12 +198,15 @@ export default function QuestionPopUp({
   const hasTimeLimit = timeoutSeconds != null && timeoutSeconds > 0;
   const [secondsLeft, setSecondsLeft] = useState(hasTimeLimit ? timeoutSeconds! : 0);
   const [answered, setAnswered] = useState(false);
+  /** For open_ended (no time limit): seconds elapsed since question start; used to lock Done for first MIN_SECONDS_BEFORE_DONE. */
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
   /** Highlighted MC option when user says A/B/C; advance only on Done or timeout. */
   const [highlightedLetter, setHighlightedLetter] = useState<string | null>(null);
   const { finalTranscript, subscribeToFinalChunk, clearTranscript } = useTranscript();
   const finalTranscriptRef = useRef<string>(finalTranscript);
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedIntervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answeredRef = useRef(false);
 
   finalTranscriptRef.current = finalTranscript;
@@ -229,6 +234,7 @@ export default function QuestionPopUp({
   useEffect(() => {
     answeredRef.current = false;
     setAnswered(false);
+    setSecondsElapsed(0);
     windowStartRef.current = Date.now();
     setHighlightedLetter(null);
     clearTranscript();
@@ -255,11 +261,20 @@ export default function QuestionPopUp({
         timeoutIdRef.current = null;
         endWindow(finalTranscriptRef.current, null);
       }, limit * 1000);
+    } else {
+      // No time limit (e.g. open_ended): count elapsed so we can lock Done for first MIN_SECONDS_BEFORE_DONE
+      elapsedIntervalIdRef.current = setInterval(() => {
+        setSecondsElapsed((prev) => prev + 1);
+      }, 1000);
     }
 
     return () => {
       if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
       if (intervalIdRef.current) clearInterval(intervalIdRef.current);
+      if (elapsedIntervalIdRef.current) {
+        clearInterval(elapsedIntervalIdRef.current);
+        elapsedIntervalIdRef.current = null;
+      }
     };
   }, [question.id, timeoutSeconds]);
 
@@ -290,6 +305,16 @@ export default function QuestionPopUp({
     }
     endWindow(finalTranscript, null);
   };
+
+  /** Done is locked for the first MIN_SECONDS_BEFORE_DONE so signals aren't missed. */
+  const canSubmit =
+    !answered &&
+    (hasTimeLimit
+      ? (timeoutSeconds! - secondsLeft) >= MIN_SECONDS_BEFORE_DONE
+      : secondsElapsed >= MIN_SECONDS_BEFORE_DONE);
+  const secondsUntilUnlock = hasTimeLimit
+    ? Math.max(0, MIN_SECONDS_BEFORE_DONE - (timeoutSeconds! - secondsLeft))
+    : Math.max(0, MIN_SECONDS_BEFORE_DONE - secondsElapsed);
 
   const isMultipleChoice = question.type === 'multiple_choice';
   const options = question.options ?? [];
@@ -347,9 +372,11 @@ export default function QuestionPopUp({
             <button
               type="button"
               onClick={handleDone}
-              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors cursor-pointer pointer-events-auto"
+              disabled={!canSubmit}
+              title={!canSubmit ? `Please wait ${secondsUntilUnlock}s before submitting` : undefined}
+              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
             >
-              Done
+              {canSubmit ? 'Done' : `Done (${secondsUntilUnlock}s)`}
             </button>
           </div>
         </div>
