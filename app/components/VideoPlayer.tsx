@@ -25,7 +25,7 @@ export interface VideoPlayerProps extends Omit<VideoCaptureProps, 'onStreamReady
 export default function VideoPlayer({
   onStreamReady,
   onSignalsUpdate,
-  analysisInterval = 2000, // Default: analyze every 2 seconds
+  analysisInterval = 5000, // Default: analyze every 5 seconds
   enabled = true,
   answerWindowActive = false,
   signalsPaused = false,

@@ -436,7 +436,7 @@ export default function TrialPage() {
                 enabled={true}
                 answerWindowActive={showingPopUp}
                 signalsPaused={!!categoryFeedbackModal || signalsCooldownActive || !!pendingCategoryModal || showNextQuestionOverlay}
-                analysisInterval={2000}
+                analysisInterval={5000}
                 idleButtonLabel="Start Session"
                 onIdleButtonClick={startSession}
                 sessionActive={sessionActive}

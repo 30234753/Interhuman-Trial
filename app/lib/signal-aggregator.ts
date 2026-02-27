@@ -70,12 +70,12 @@ export class SignalAggregator {
 
     // Calculate the time span covered by these signals
     // For simplicity, we count unique analysis cycles (each signal represents one analysis)
-    // Since analysis happens every 2 seconds, we can count occurrences
+    // Since analysis happens every 5 seconds, we can count occurrences
     const uniqueTimestamps = new Set(typeSignals.map(s => s.timestamp));
     
     // Estimate number of analysis cycles in the window
-    // Assuming analysis happens every 2 seconds, we have approximately windowMs/2000 cycles
-    const estimatedCycles = Math.ceil(this.windowMs / 2000);
+    // Assuming analysis happens every 5 seconds, we have approximately windowMs/5000 cycles
+    const estimatedCycles = Math.ceil(this.windowMs / 5000);
     
     // Persistence is the ratio of cycles where signal was detected
     const detectedCycles = uniqueTimestamps.size;
