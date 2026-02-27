@@ -7,7 +7,7 @@ import { useTranscript } from '@/app/lib/transcript-context';
 
 const DEFAULT_TIMEOUT_SECONDS = 30;
 /** Minimum seconds before Done is enabled (so users don't rush and miss signals). */
-const MIN_SECONDS_BEFORE_DONE = 10;
+const MIN_SECONDS_BEFORE_DONE = 15;
 
 /** Letters that can be parsed (only those in the question's options, e.g. A,B,C). */
 const LETTERS = ['A', 'B', 'C', 'D'] as const;
